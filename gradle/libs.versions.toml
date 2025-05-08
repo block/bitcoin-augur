@@ -1,0 +1,40 @@
+# Dependency versions for Augur Bitcoin Fee Estimator
+
+[versions]
+# Core dependencies
+commons-math3 = "3.6.1"
+guava = "33.4.5-jre"
+viktor = "1.2.0"
+
+# Testing
+junit-jupiter = "5.12.1"
+mockk = "1.13.17"
+jacoco = "0.8.11"
+
+# Build and tooling
+kotlin = "2.1.20"
+dokka = "2.0.0"
+mavenPublishGradlePlugin = "0.31.0"
+dependencyAnalysis = "2.13.0"
+binaryCompatibilityValidator = "0.17.0"
+spotless = "7.0.2"
+
+[libraries]
+# Core dependencies
+commons-math3 = { module = "org.apache.commons:commons-math3", version.ref = "commons-math3" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+viktor = { module = "org.jetbrains.bio:viktor", version.ref = "viktor" }
+
+# Testing dependencies
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit-jupiter" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+
+[plugins]
+# Project plugins
+kotlinGradlePlugin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+mavenPublishGradlePlugin = { id = "com.vanniktech.maven.publish.base", version.ref = "mavenPublishGradlePlugin" }
+dependencyAnalysis = { id = "com.autonomousapps.dependency-analysis", version.ref = "dependencyAnalysis" }
+binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

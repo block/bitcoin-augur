@@ -1,0 +1,95 @@
+public final class xyz/block/augur/BlockTarget {
+	public fun <init> (ILjava/util/Map;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/util/Map;
+	public final fun copy (ILjava/util/Map;)Lxyz/block/augur/BlockTarget;
+	public static synthetic fun copy$default (Lxyz/block/augur/BlockTarget;ILjava/util/Map;ILjava/lang/Object;)Lxyz/block/augur/BlockTarget;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBlocks ()I
+	public final fun getFeeRate (D)Ljava/lang/Double;
+	public final fun getProbabilities ()Ljava/util/Map;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class xyz/block/augur/FeeEstimate {
+	public fun <init> (Ljava/util/Map;Ljava/time/Instant;)V
+	public final fun component1 ()Ljava/util/Map;
+	public final fun component2 ()Ljava/time/Instant;
+	public final fun copy (Ljava/util/Map;Ljava/time/Instant;)Lxyz/block/augur/FeeEstimate;
+	public static synthetic fun copy$default (Lxyz/block/augur/FeeEstimate;Ljava/util/Map;Ljava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimate;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAvailableBlockTargets ()Ljava/util/List;
+	public final fun getAvailableConfidenceLevels ()Ljava/util/List;
+	public final fun getEstimates ()Ljava/util/Map;
+	public final fun getEstimatesForTarget (I)Lxyz/block/augur/BlockTarget;
+	public final fun getFeeRate (ID)Ljava/lang/Double;
+	public final fun getNearestBlockTarget (I)Ljava/lang/Integer;
+	public final fun getTimestamp ()Ljava/time/Instant;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class xyz/block/augur/FeeEstimator {
+	public static final field Companion Lxyz/block/augur/FeeEstimator$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/util/List;)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun calculateEstimates (Ljava/util/List;)Lxyz/block/augur/FeeEstimate;
+	public final fun configure (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;)Lxyz/block/augur/FeeEstimator;
+	public static synthetic fun configure$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimator;
+}
+
+public final class xyz/block/augur/FeeEstimator$Companion {
+	public final fun getDEFAULT_BLOCK_TARGETS ()Ljava/util/List;
+	public final fun getDEFAULT_PROBABILITIES ()Ljava/util/List;
+}
+
+public final class xyz/block/augur/MempoolSnapshot {
+	public static final field Companion Lxyz/block/augur/MempoolSnapshot$Companion;
+	public fun <init> (ILjava/time/Instant;Ljava/util/Map;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/time/Instant;
+	public final fun component3 ()Ljava/util/Map;
+	public final fun copy (ILjava/time/Instant;Ljava/util/Map;)Lxyz/block/augur/MempoolSnapshot;
+	public static synthetic fun copy$default (Lxyz/block/augur/MempoolSnapshot;ILjava/time/Instant;Ljava/util/Map;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBlockHeight ()I
+	public final fun getBucketedWeights ()Ljava/util/Map;
+	public final fun getTimestamp ()Ljava/time/Instant;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class xyz/block/augur/MempoolSnapshot$Companion {
+	public final fun empty (ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
+	public static synthetic fun empty$default (Lxyz/block/augur/MempoolSnapshot$Companion;ILjava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
+	public final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
+	public static synthetic fun fromMempoolTransactions$default (Lxyz/block/augur/MempoolSnapshot$Companion;Ljava/util/List;ILjava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
+}
+
+public final class xyz/block/augur/MempoolTransaction {
+	public static final field Companion Lxyz/block/augur/MempoolTransaction$Companion;
+	public static final field WU_PER_BYTE D
+	public fun <init> (JJ)V
+	public final fun component1 ()J
+	public final fun component2 ()J
+	public final fun copy (JJ)Lxyz/block/augur/MempoolTransaction;
+	public static synthetic fun copy$default (Lxyz/block/augur/MempoolTransaction;JJILjava/lang/Object;)Lxyz/block/augur/MempoolTransaction;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFee ()J
+	public final fun getFeeRate ()D
+	public final fun getWeight ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class xyz/block/augur/MempoolTransaction$Companion {
+}
+
+public abstract interface annotation class xyz/block/augur/internal/InternalAugurApi : java/lang/annotation/Annotation {
+}
+

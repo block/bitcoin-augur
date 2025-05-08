@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  ENVIRONMENT: TESTING
+  TERM: dumb
+
+jobs:
+  jvm:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        java-version: ['11', '17']
+        cmd:
+          - bin/gradle clean build -i --scan --no-daemon
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: '${{ matrix.java-version }}'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Test
+        run: ${{ matrix.cmd }}
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: mikepenz/action-junit-report@v5
+        with:
+          check_name: Test Report - ${{ matrix.cmd }}
+          report_paths: '**/build/test-results/test/TEST-*.xml'
