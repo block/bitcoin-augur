@@ -38,7 +38,8 @@ public final class xyz/block/augur/FeeEstimator {
 	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;)V
 	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;)V
 	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun calculateEstimates (Ljava/util/List;)Lxyz/block/augur/FeeEstimate;
+	public final fun calculateEstimates (Ljava/util/List;Ljava/lang/Double;)Lxyz/block/augur/FeeEstimate;
+	public static synthetic fun calculateEstimates$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/lang/Double;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimate;
 	public final fun configure (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;)Lxyz/block/augur/FeeEstimator;
 	public static synthetic fun configure$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimator;
 }
