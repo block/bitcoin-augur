@@ -304,4 +304,21 @@ class FeeEstimatorTest {
     val availableConfidenceLevels = estimate.getAvailableConfidenceLevels()
     assertEquals(listOf(0.2, 0.5, 0.8), availableConfidenceLevels)
   }
+
+  @Test
+  fun `test when numOfBlocks specified we get same value for the default block targets`() {
+    val snapshots =
+      TestUtils.createSnapshotSequence(
+        blockCount = 5,
+        snapshotsPerBlock = 3,
+      )
+
+    val estimate = feeEstimator.calculateEstimates(snapshots)
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      val estimateForTarget = feeEstimator.calculateEstimates(snapshots, target)
+      assertEquals(estimate.estimates[target.toInt()], estimateForTarget.estimates[target.toInt()])
+    }
+
+
+  }
 }
