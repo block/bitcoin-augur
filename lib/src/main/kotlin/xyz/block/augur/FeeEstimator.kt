@@ -68,9 +68,11 @@ public class FeeEstimator @JvmOverloads public constructor(
    *
    * @param mempoolSnapshots A list of historical mempool snapshots, ideally covering
    *                        at least the past 24 hours.
+   * @param numOfBlocks Optional specific block target to estimate for.
+   *                       If null or not positive, uses all default block targets.
    * @return A [FeeEstimate] object containing the calculated estimates.
    */
-  public fun calculateEstimates(mempoolSnapshots: List<MempoolSnapshot>): FeeEstimate {
+  public fun calculateEstimates(mempoolSnapshots: List<MempoolSnapshot>, numOfBlocks: Double? = null): FeeEstimate {
     if (mempoolSnapshots.isEmpty()) {
       return FeeEstimate(emptyMap(), Instant.now())
     }
@@ -84,13 +86,24 @@ public class FeeEstimator @JvmOverloads public constructor(
     val shortTermInflows = InflowCalculator.calculateInflows(simdSnapshots, shortTermWindowDuration)
     val longTermInflows = InflowCalculator.calculateInflows(simdSnapshots, longTermWindowDuration)
 
+    val feeMatrix: Array<Array<Double?>>
+    if (numOfBlocks != null && numOfBlocks > 0) {
+      val feeEstimatesCalculatorForSingleBlock = FeeEstimatesCalculator(probabilities, listOf(numOfBlocks))
+      // Calculate fee estimates using the core algorithm
+      feeMatrix = feeEstimatesCalculatorForSingleBlock.getFeeEstimates(
+        latestMempoolWeights,
+        shortTermInflows,
+        longTermInflows,
+      )
+      return convertToFeeEstimate(feeMatrix, orderedSnapshots.last().timestamp, listOf(numOfBlocks))
+    }
+
     // Calculate fee estimates using the core algorithm
-    val feeMatrix = feeEstimatesCalculator.getFeeEstimates(
+    feeMatrix = feeEstimatesCalculator.getFeeEstimates(
       latestMempoolWeights,
       shortTermInflows,
       longTermInflows,
     )
-
     return convertToFeeEstimate(feeMatrix, orderedSnapshots.last().timestamp)
   }
 
@@ -118,9 +131,13 @@ public class FeeEstimator @JvmOverloads public constructor(
   /**
    * Converts the raw fee matrix to a structured [FeeEstimate] object.
    */
-  private fun convertToFeeEstimate(feeMatrix: Array<Array<Double?>>, timestamp: Instant): FeeEstimate {
+  private fun convertToFeeEstimate(
+    feeMatrix: Array<Array<Double?>>,
+    timestamp: Instant,
+    targets: List<Double> = blockTargets
+  ): FeeEstimate {
     val estimates = buildMap {
-      blockTargets.forEachIndexed { blockIndex, meanBlocks ->
+      targets.forEachIndexed { blockIndex, meanBlocks ->
         val blockTarget = BlockTarget(
           blocks = meanBlocks.toInt(),
           probabilities = buildMap {
