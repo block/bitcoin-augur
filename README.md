@@ -40,7 +40,7 @@ val feeEstimator = FeeEstimator()
 
 // Create a mempool snapshot from current transactions
 val mempoolSnapshot = MempoolSnapshot.fromMempoolTransactions(
-    transactions = currentMempoolTransactions.map { 
+    transactions = currentMempoolTransactions.map {
         MempoolTransaction(
             weight = it.weight.toLong(),
             fee = it.baseFee // in satoshis
@@ -84,7 +84,7 @@ val probabilities = sixBlockTarget?.probabilities
 val customFeeEstimator = FeeEstimator(
     // Custom probability levels (confidence)
     probabilities = listOf(0.1, 0.25, 0.5, 0.75, 0.9, 0.99),
-    
+
     // Custom block targets
     blockTargets = listOf(1.0, 2.0, 3.0, 6.0, 12.0, 24.0, 48.0, 72.0)
 )
@@ -99,6 +99,11 @@ This library focuses solely on fee estimation based on mempool data. You are res
 3. Providing historical snapshots to the fee estimator
 
 See our [reference implementation](https://github.com/block/bitcoin-augur-reference) for a complete example of integration with Bitcoin Core and implementing a persistence layer.
+
+If you'd like to use a local version of Augur within your reference implementation:
+ - Copy the file `lib/build/libs/augur.jar` into the reference implementation `app/libs` directory.
+ - Change
+`implementation(libs.augur)` to `implementation(files("libs/augur.jar"))` in the `app/build.gradle.kts` [file](https://github.com/block/bitcoin-augur-reference/blob/main/app/build.gradle.kts).
 
 ## How It Works
 

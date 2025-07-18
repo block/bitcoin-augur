@@ -7,6 +7,7 @@ plugins {
     `java-library`
     id("org.jetbrains.dokka")
     id("com.diffplug.spotless")
+    alias(libs.plugins.shadow)
 }
 
 group = "xyz.block"
@@ -44,6 +45,9 @@ dependencies {
     implementation(libs.guava)
     implementation(libs.viktor)
 
+    // SLF4J implementation for Viktor dependency
+    implementation("org.slf4j:slf4j-simple:1.7.36")
+
     // Testing dependencies
     testImplementation(kotlin("test"))
     testImplementation(libs.junit.jupiter.engine)
@@ -51,6 +55,16 @@ dependencies {
     testImplementation(libs.mockk)
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.build {
+  dependsOn(tasks.shadowJar)
+}
+
+tasks.shadowJar {
+  archiveBaseName.set("augur")
+  archiveClassifier.set("") // No "-all" suffix
+  mergeServiceFiles()
 }
 
 tasks.test {
@@ -66,7 +80,7 @@ dokka {
         moduleName.set("augur")
         includes.from("Module.md")
         jdkVersion.set(11)
-        
+
         sourceLink {
             localDirectory.set(file("src/main/kotlin"))
             remoteUrl("https://github.com/block/bitcoin-augur/blob/main/lib/src/main/kotlin")
