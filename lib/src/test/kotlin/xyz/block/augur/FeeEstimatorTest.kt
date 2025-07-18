@@ -22,6 +22,7 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
 
 class FeeEstimatorTest {
   private val feeEstimator = FeeEstimator()
@@ -303,5 +304,28 @@ class FeeEstimatorTest {
     // Test that available confidence levels are returned in ascending order
     val availableConfidenceLevels = estimate.getAvailableConfidenceLevels()
     assertEquals(listOf(0.2, 0.5, 0.8), availableConfidenceLevels)
+  }
+
+  @Test
+  fun `test when numOfBlocks specified we get same value for the default block targets`() {
+    val snapshots =
+      TestUtils.createSnapshotSequence(
+        blockCount = 5,
+        snapshotsPerBlock = 3,
+      )
+
+    val estimate = feeEstimator.calculateEstimates(snapshots)
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      val estimateForTarget = feeEstimator.calculateEstimates(snapshots, target)
+      assertEquals(estimate.estimates[target.toInt()], estimateForTarget.estimates[target.toInt()])
+    }
+  }
+
+  @Test
+  fun `test calculateEstimates throws if numOfBlocks less than 3`() {
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    assertFailsWith<IllegalArgumentException> {
+      feeEstimator.calculateEstimates(snapshots, numOfBlocks = 2.0)
+    }
   }
 }
