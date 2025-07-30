@@ -77,7 +77,7 @@ subprojects {
                     pomFromGradleProperties()
                     
                     // Configure Maven Central publishing
-                    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, true)
+                    publishToMavenCentral(true)
                     
                     // Sign all publications when publishing
                     signAllPublications()

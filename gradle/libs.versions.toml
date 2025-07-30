@@ -14,7 +14,7 @@ jacoco = "0.8.11"
 # Build and tooling
 kotlin = "2.1.20"
 dokka = "2.0.0"
-mavenPublishGradlePlugin = "0.31.0"
+mavenPublishGradlePlugin = "0.34.0"
 dependencyAnalysis = "2.13.0"
 binaryCompatibilityValidator = "0.17.0"
 spotless = "7.0.2"
