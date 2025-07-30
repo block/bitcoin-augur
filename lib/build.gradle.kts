@@ -7,7 +7,6 @@ plugins {
     `java-library`
     id("org.jetbrains.dokka")
     id("com.diffplug.spotless")
-    alias(libs.plugins.shadow)
 }
 
 group = "xyz.block"
@@ -52,19 +51,6 @@ dependencies {
     testImplementation(libs.mockk)
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.shadowJar {
-  archiveBaseName.set("augur")
-  archiveClassifier.set("") // No "-all" suffix
-  mergeServiceFiles()
-}
-
-// Remove shadowJar from the java component so it's not published
-components.withType<AdhocComponentWithVariants> {
-    withVariantsFromConfiguration(configurations["shadowRuntimeElements"]) {
-        skip()
-    }
 }
 
 tasks.test {
