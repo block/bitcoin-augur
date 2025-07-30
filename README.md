@@ -101,6 +101,7 @@ This library focuses solely on fee estimation based on mempool data. You are res
 See our [reference implementation](https://github.com/block/bitcoin-augur-reference) for a complete example of integration with Bitcoin Core and implementing a persistence layer.
 
 If you'd like to use a local version of Augur within your reference implementation:
+ - Run `gradle shadowJar` to build a fat jar of augur.
  - Copy the file `lib/build/libs/augur.jar` into the reference implementation `app/libs` directory.
  - Change
 `implementation(libs.augur)` to `implementation(files("libs/augur.jar"))` in the `app/build.gradle.kts` [file](https://github.com/block/bitcoin-augur-reference/blob/main/app/build.gradle.kts).
