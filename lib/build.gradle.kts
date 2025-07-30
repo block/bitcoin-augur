@@ -56,7 +56,7 @@ dependencies {
 
 tasks.shadowJar {
   archiveBaseName.set("augur")
-  archiveClassifier.set("") // No "-all" suffix
+  archiveClassifier.set("all") // Use "all" classifier to avoid conflict
   mergeServiceFiles()
 }
 
@@ -65,6 +65,18 @@ components.withType<AdhocComponentWithVariants> {
     withVariantsFromConfiguration(configurations["shadowRuntimeElements"]) {
         skip()
     }
+}
+
+// Create a custom task to rename the shadowJar to augur.jar without classifier
+val createAugurJar = tasks.register<Copy>("createAugurJar") {
+  dependsOn(tasks.shadowJar)
+  from(tasks.shadowJar.get().archiveFile)
+  into(layout.buildDirectory.dir("augur"))
+  rename { "augur.jar" }
+}
+
+tasks.build {
+  dependsOn(createAugurJar)
 }
 
 tasks.test {
