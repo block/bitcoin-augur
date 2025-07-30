@@ -18,7 +18,6 @@ mavenPublishGradlePlugin = "0.31.0"
 dependencyAnalysis = "2.13.0"
 binaryCompatibilityValidator = "0.17.0"
 spotless = "7.0.2"
-shadow = "8.1.1"
 
 [libraries]
 # Core dependencies
@@ -39,4 +38,3 @@ mavenPublishGradlePlugin = { id = "com.vanniktech.maven.publish.base", version.r
 dependencyAnalysis = { id = "com.autonomousapps.dependency-analysis", version.ref = "dependencyAnalysis" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }

@@ -1,8 +1,6 @@
 .gradle
 build/
-gradle/wrapper/
-gradlew
-gradlew.bat
+!gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 .kotlin/
