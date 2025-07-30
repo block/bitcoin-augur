@@ -7,6 +7,7 @@ plugins {
     `java-library`
     id("org.jetbrains.dokka")
     id("com.diffplug.spotless")
+    alias(libs.plugins.shadow)
 }
 
 group = "xyz.block"
@@ -53,6 +54,16 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+tasks.build {
+  dependsOn(tasks.shadowJar)
+}
+
+tasks.shadowJar {
+  archiveBaseName.set("augur")
+  archiveClassifier.set("") // No "-all" suffix
+  mergeServiceFiles()
+}
+
 tasks.test {
     useJUnitPlatform()
     testLogging {
@@ -66,7 +77,7 @@ dokka {
         moduleName.set("augur")
         includes.from("Module.md")
         jdkVersion.set(11)
-        
+
         sourceLink {
             localDirectory.set(file("src/main/kotlin"))
             remoteUrl("https://github.com/block/bitcoin-augur/blob/main/lib/src/main/kotlin")
