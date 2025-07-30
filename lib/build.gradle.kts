@@ -45,9 +45,6 @@ dependencies {
     implementation(libs.guava)
     implementation(libs.viktor)
 
-    // SLF4J implementation for Viktor dependency
-    implementation("org.slf4j:slf4j-simple:1.7.36")
-
     // Testing dependencies
     testImplementation(kotlin("test"))
     testImplementation(libs.junit.jupiter.engine)
