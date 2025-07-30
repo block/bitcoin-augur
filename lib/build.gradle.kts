@@ -54,14 +54,17 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.build {
-  dependsOn(tasks.shadowJar)
-}
-
 tasks.shadowJar {
   archiveBaseName.set("augur")
   archiveClassifier.set("") // No "-all" suffix
   mergeServiceFiles()
+}
+
+// Remove shadowJar from the java component so it's not published
+components.withType<AdhocComponentWithVariants> {
+    withVariantsFromConfiguration(configurations["shadowRuntimeElements"]) {
+        skip()
+    }
 }
 
 tasks.test {
