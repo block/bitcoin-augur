@@ -4,11 +4,11 @@ import org.gradle.api.publish.PublishingExtension
 plugins {
     base
     alias(libs.plugins.kotlinGradlePlugin) apply false
-    alias(libs.plugins.mavenPublishGradlePlugin) apply false
     alias(libs.plugins.dokka)
     alias(libs.plugins.dependencyAnalysis)
     alias(libs.plugins.binaryCompatibilityValidator)
     alias(libs.plugins.spotless) apply false
+    id("com.vanniktech.maven.publish.base") version libs.versions.mavenPublishGradlePlugin.get() apply false
 }
 
 buildscript {
@@ -33,21 +33,20 @@ subprojects {
     }
 
     apply(plugin = "com.diffplug.spotless")
-    apply(plugin = rootProject.project.libs.plugins.mavenPublishGradlePlugin.get().pluginId)
-    
+
     // Configure Spotless with default settings for all subprojects
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {
         // By default, spotless auto-formatting is not executed before the compile step
         // By default, spotless linting will not happen during the check step
-        
+
         kotlin {
             // Apply to .kt files
             target("**/*.kt")
-            
+
             trimTrailingWhitespace()
             leadingTabsToSpaces()
             endWithNewline()
-            
+
             // Use ktlint with .editorconfig settings
             ktlint("0.48.2")
                 .editorConfigOverride(mapOf(
@@ -61,13 +60,13 @@ subprojects {
         // Only apply these plugins to subprojects that apply the java plugin
         plugins.withId("java") {
             apply(plugin = "jacoco")
-            
+
             // Configure JaCoCo for consistent code coverage reporting
             extensions.configure<JacocoPluginExtension> {
                 toolVersion = "0.8.11"
             }
         }
-        
+
         // Configure Maven publishing if the project applies the maven-publish plugin
         plugins.withId("com.vanniktech.maven.publish.base") {
             val publishingExtension = extensions.findByType(PublishingExtension::class.java)
@@ -75,10 +74,10 @@ subprojects {
                 extensions.configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
                     // Configure POM from properties
                     pomFromGradleProperties()
-                    
+
                     // Configure Maven Central publishing
-                    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, true)
-                    
+                    publishToMavenCentral()
+
                     // Sign all publications when publishing
                     signAllPublications()
                 }
@@ -95,7 +94,7 @@ subprojects {
 tasks.register("generateDocs") {
     group = "documentation"
     description = "Generate complete documentation site"
-    
+
     dependsOn(":dokkaGenerate")
 }
 
@@ -103,6 +102,6 @@ tasks.register("generateDocs") {
 tasks.register("prepareRelease") {
     group = "release"
     description = "Prepare for a new release by updating versions and validating"
-    
+
     dependsOn(":apiCheck", ":test", ":generateDocs")
 }

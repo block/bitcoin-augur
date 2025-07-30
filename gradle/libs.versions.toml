@@ -14,7 +14,7 @@ jacoco = "0.8.11"
 # Build and tooling
 kotlin = "2.1.20"
 dokka = "2.0.0"
-mavenPublishGradlePlugin = "0.31.0"
+mavenPublishGradlePlugin = "0.33.0"
 dependencyAnalysis = "2.13.0"
 binaryCompatibilityValidator = "0.17.0"
 spotless = "7.0.2"
@@ -34,7 +34,7 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 # Project plugins
 kotlinGradlePlugin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
-mavenPublishGradlePlugin = { id = "com.vanniktech.maven.publish.base", version.ref = "mavenPublishGradlePlugin" }
+mavenPublishGradlePlugin = { module = "com.vanniktech:gradle-maven-publish-plugin", version.ref = "mavenPublishGradlePlugin" }
 dependencyAnalysis = { id = "com.autonomousapps.dependency-analysis", version.ref = "dependencyAnalysis" }
 binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
