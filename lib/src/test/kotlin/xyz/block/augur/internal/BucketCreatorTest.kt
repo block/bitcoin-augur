@@ -138,4 +138,32 @@ class BucketCreatorTest {
     assertTrue(buckets.containsKey(BucketCreator.BUCKET_MAX))
     assertEquals(400L, buckets[BucketCreator.BUCKET_MAX])
   }
+
+  @Test
+  fun `test createFeeRateBuckets with very low fee rates`() {
+    // Test 0.1 sat/vB minimum (Bitcoin Core 29.1+)
+    val transactions =
+      listOf(
+        MempoolTransaction(weight = 400, fee = 10), // 0.1 sat/vB
+        MempoolTransaction(weight = 400, fee = 20), // 0.2 sat/vB
+        MempoolTransaction(weight = 400, fee = 100), // 1 sat/vB
+      )
+
+    val buckets = BucketCreator.createFeeRateBuckets(transactions)
+
+    // Calculate expected bucket indices
+    val bucket01 = (ln(0.1) * 100).roundToInt() // ~-230
+    val bucket02 = (ln(0.2) * 100).roundToInt() // ~-161
+    val bucket1 = 0 // ln(1) * 100 = 0
+
+    println("Buckets: $buckets")
+
+    assertEquals(3, buckets.size)
+    assertTrue(buckets.containsKey(bucket01))
+    assertTrue(buckets.containsKey(bucket02))
+    assertTrue(buckets.containsKey(bucket1))
+    assertEquals(400L, buckets[bucket01])
+    assertEquals(400L, buckets[bucket02])
+    assertEquals(400L, buckets[bucket1])
+  }
 }
