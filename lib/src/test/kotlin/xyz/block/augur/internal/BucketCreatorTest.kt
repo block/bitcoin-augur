@@ -156,8 +156,6 @@ class BucketCreatorTest {
     val bucket02 = (ln(0.2) * 100).roundToInt() // ~-161
     val bucket1 = 0 // ln(1) * 100 = 0
 
-    println("Buckets: $buckets")
-
     assertEquals(3, buckets.size)
     assertTrue(buckets.containsKey(bucket01))
     assertTrue(buckets.containsKey(bucket02))

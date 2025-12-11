@@ -19,6 +19,7 @@ package xyz.block.augur.internal
 import org.jetbrains.bio.viktor.F64Array
 import org.junit.jupiter.api.Test
 import xyz.block.augur.internal.BucketCreator.BUCKET_MAX
+import xyz.block.augur.internal.BucketCreator.BUCKET_MIN
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -51,7 +52,7 @@ class FeeEstimatesCalculatorTest {
   @Test
   fun `test findBestIndex when all weights are mined`() {
     val weights = F64Array(5) { 0.0 }
-    assertEquals(0, calculator.findBestIndex(weights))
+    assertEquals(BUCKET_MIN, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -165,7 +166,7 @@ class FeeEstimatesCalculatorTest {
       )
 
     // With such a large block size, all buckets should be mined
-    assertEquals(0, result)
+    assertEquals(BUCKET_MIN, result)
   }
 
   @Test
@@ -190,7 +191,7 @@ class FeeEstimatesCalculatorTest {
   }
 
   @Test
-  fun `test runSimulation returns 1 sat per vb when all buckets are mined`() {
+  fun `test runSimulation returns minimum fee bucket when all buckets are mined`() {
     val initialWeights = F64Array(5) { 4.0 }
     val addedWeights = F64Array(5) { 4.0 }
 
@@ -203,7 +204,7 @@ class FeeEstimatesCalculatorTest {
         blockSize = 100.0,
       )
 
-    assertEquals(0, result)
+    assertEquals(BUCKET_MIN, result)
   }
 
   @Test

@@ -20,6 +20,7 @@ import org.apache.commons.math3.distribution.PoissonDistribution
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.F64Array.Companion.invoke
 import xyz.block.augur.internal.BucketCreator.BUCKET_MAX
+import xyz.block.augur.internal.BucketCreator.BUCKET_MIN
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.pow
@@ -169,11 +170,11 @@ internal class FeeEstimatesCalculator(
     // The last mined bucket will occur just before the first non-zero remaining weight.
     val index = weightsRemaining.toDoubleArray().indexOfFirst { it != 0.0 } - 1
 
-    // If index = -2, then all weights are zero so we will return a trivial index.
+    // If index = -2, then all weights are zero so we will return the cheapest bucket.
     // If index = -1, then no weights are fully mined so can't determine a sufficiently high rate.
     // Else, createFeeRateBuckets reversed the order, so subtract to recover the original index.
     return when (index) {
-      -2 -> 0 // all weights are zero so we can use the cheapest fee rate
+      -2 -> BUCKET_MIN // all weights are zero so we can use the cheapest fee rate
       -1 -> BUCKET_MAX + 1 // return null
       else -> BUCKET_MAX - index
     }
