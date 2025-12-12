@@ -32,7 +32,7 @@ internal object BucketCreator {
   const val BUCKET_MAX = 1000
 
   /**
-   * Minimum bucket index corresponding to 0.1 sat/vByte (Bitcoin Core 29.1+).
+   * Minimum bucket index corresponding to 0.1 sat/vByte (Bitcoin Core 29.1/30.0+).
    * Calculated as round(ln(0.1) * 100) = -230
    */
   const val BUCKET_MIN = -230

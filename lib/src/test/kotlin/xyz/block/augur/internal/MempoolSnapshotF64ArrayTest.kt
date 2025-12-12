@@ -56,7 +56,7 @@ class MempoolSnapshotF64ArrayTest {
 
   @Test
   fun `fromMempoolSnapshot ignores very low fee rates like 0_05 sat per vB`() {
-    // 0.05 sat/vB is below Bitcoin Core's minimum relay fee (0.1 sat/vB in 29.1+)
+    // 0.05 sat/vB is below Bitcoin Core's minimum relay fee (0.1 sat/vB in 29.1/30.0+)
     // This should be gracefully ignored, not cause an error
     val veryLowFeeRate = 0.05
     val veryLowBucket = (ln(veryLowFeeRate) * 100).roundToInt() // -300

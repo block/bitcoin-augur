@@ -141,7 +141,7 @@ class BucketCreatorTest {
 
   @Test
   fun `test createFeeRateBuckets with very low fee rates`() {
-    // Test 0.1 sat/vB minimum (Bitcoin Core 29.1+)
+    // Test 0.1 sat/vB minimum (Bitcoin Core 29.1/30.0+)
     val transactions =
       listOf(
         MempoolTransaction(weight = 400, fee = 10), // 0.1 sat/vB
