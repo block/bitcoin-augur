@@ -18,9 +18,16 @@ package xyz.block.augur.internal
 
 import org.jetbrains.bio.viktor.F64Array
 import org.junit.jupiter.api.Test
+import xyz.block.augur.MempoolSnapshot
 import xyz.block.augur.internal.BucketCreator.BUCKET_MAX
+import xyz.block.augur.internal.BucketCreator.BUCKET_MIN
+import java.time.Instant
+import kotlin.math.exp
+import kotlin.math.ln
+import kotlin.math.roundToInt
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(InternalAugurApi::class)
 class FeeEstimatesCalculatorTest {
@@ -51,7 +58,7 @@ class FeeEstimatesCalculatorTest {
   @Test
   fun `test findBestIndex when all weights are mined`() {
     val weights = F64Array(5) { 0.0 }
-    assertEquals(0, calculator.findBestIndex(weights))
+    assertEquals(BUCKET_MIN, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -165,7 +172,7 @@ class FeeEstimatesCalculatorTest {
       )
 
     // With such a large block size, all buckets should be mined
-    assertEquals(0, result)
+    assertEquals(BUCKET_MIN, result)
   }
 
   @Test
@@ -190,7 +197,7 @@ class FeeEstimatesCalculatorTest {
   }
 
   @Test
-  fun `test runSimulation returns 1 sat per vb when all buckets are mined`() {
+  fun `test runSimulation returns minimum fee bucket when all buckets are mined`() {
     val initialWeights = F64Array(5) { 4.0 }
     val addedWeights = F64Array(5) { 4.0 }
 
@@ -203,7 +210,45 @@ class FeeEstimatesCalculatorTest {
         blockSize = 100.0,
       )
 
-    assertEquals(0, result)
+    assertEquals(BUCKET_MIN, result)
+  }
+
+  @Test
+  fun `test near-minimum fee bucket never emits sub 0_1 sat per vB`() {
+    val nearMinimumFeeRate = 0.0998
+    val bucketIndex = (ln(nearMinimumFeeRate) * 100).roundToInt()
+    assertEquals(BUCKET_MIN, bucketIndex)
+
+    val snapshot =
+      MempoolSnapshot(
+        blockHeight = 800_000,
+        timestamp = Instant.EPOCH,
+        bucketedWeights = mapOf(bucketIndex to 4_000_000L),
+      )
+
+    val mempoolBuckets = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot).buckets
+    val zeroInflows = F64Array(BucketCreator.BUCKET_ARRAY_SIZE) { 0.0 }
+
+    val estimates =
+      calculator.getFeeEstimates(
+        mempoolBuckets,
+        zeroInflows,
+        zeroInflows.copy(),
+      )
+
+    val expectedFeeRate = exp(bucketIndex.toDouble() / 100.0)
+    estimates.forEachIndexed { blockIdx, row ->
+      row.forEachIndexed { probIdx, fee ->
+        val actual = requireNotNull(fee)
+        assertTrue(actual >= 0.1, "estimate[$blockIdx][$probIdx] should be >= 0.1 sat/vB")
+        assertEquals(
+          expectedFeeRate,
+          actual,
+          1e-12,
+          "estimate[$blockIdx][$probIdx] should match the rounded bucket fee rate",
+        )
+      }
+    }
   }
 
   @Test
