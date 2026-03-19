@@ -43,7 +43,7 @@ class MempoolSnapshotF64ArrayTest {
     val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot)
 
     assertEquals(BucketCreator.BUCKET_ARRAY_SIZE, result.buckets.length)
-    val validIndex = BucketCreator.BUCKET_MAX - validBucket
+    val validIndex = BucketCreator.toArrayIndex(validBucket)
     assertEquals(600.0, result.buckets[validIndex])
 
     var totalWeight = 0.0
@@ -84,5 +84,31 @@ class MempoolSnapshotF64ArrayTest {
       totalWeight += result.buckets[i]
     }
     assertEquals(500.0, totalWeight)
+  }
+
+  @Test
+  fun `fromMempoolSnapshot drops buckets above BUCKET_MAX`() {
+    val oversizedBucket = BucketCreator.BUCKET_MAX + 1
+    val validBucket = BucketCreator.BUCKET_MAX
+
+    val snapshot =
+      MempoolSnapshot(
+        blockHeight = 100,
+        timestamp = Instant.now(),
+        bucketedWeights = mapOf(
+          oversizedBucket to 1000L,
+          validBucket to 500L,
+        ),
+      )
+
+    val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot)
+
+    // Only the valid bucket's weight should be included
+    var totalWeight = 0.0
+    for (i in 0 until result.buckets.length) {
+      totalWeight += result.buckets[i]
+    }
+    assertEquals(500.0, totalWeight)
+    assertEquals(500.0, result.buckets[BucketCreator.toArrayIndex(validBucket)])
   }
 }

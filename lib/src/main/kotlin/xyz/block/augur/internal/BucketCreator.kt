@@ -44,6 +44,17 @@ internal object BucketCreator {
   const val BUCKET_ARRAY_SIZE = BUCKET_MAX - BUCKET_MIN + 1
 
   /**
+   * Converts a bucket index (BUCKET_MIN..BUCKET_MAX) to the corresponding array position.
+   * Buckets are stored in reverse order so that the highest fee rate (BUCKET_MAX) is at index 0.
+   */
+  fun toArrayIndex(bucket: Int): Int = BUCKET_MAX - bucket
+
+  /**
+   * Converts an array position back to the original bucket index.
+   */
+  fun toBucketIndex(arrayIndex: Int): Int = BUCKET_MAX - arrayIndex
+
+  /**
    * Creates a bucket map from fee and weight pairs where the key is the bucket index
    * and the value is the sum of the weights at that fee rate, normalized to a one block duration.
    */
