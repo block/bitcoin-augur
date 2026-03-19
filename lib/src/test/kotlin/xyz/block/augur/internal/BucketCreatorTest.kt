@@ -140,6 +140,11 @@ class BucketCreatorTest {
   }
 
   @Test
+  fun `test BUCKET_MIN matches ln(0_1) times 100 rounded`() {
+    assertEquals((ln(0.1) * 100).roundToInt(), BucketCreator.BUCKET_MIN)
+  }
+
+  @Test
   fun `test createFeeRateBuckets with very low fee rates`() {
     // Test 0.1 sat/vB minimum (Bitcoin Core 29.1/30.0+)
     val transactions =

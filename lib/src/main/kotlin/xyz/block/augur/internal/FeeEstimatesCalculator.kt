@@ -176,7 +176,7 @@ internal class FeeEstimatesCalculator(
     return when (index) {
       -2 -> BUCKET_MIN // all weights are zero so we can use the cheapest fee rate
       -1 -> BUCKET_MAX + 1 // return null
-      else -> BUCKET_MAX - index
+      else -> BucketCreator.toBucketIndex(index)
     }
   }
 
