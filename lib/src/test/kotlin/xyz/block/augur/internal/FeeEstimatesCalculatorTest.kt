@@ -95,7 +95,8 @@ class FeeEstimatesCalculatorTest {
       )
 
     // With these parameters, we expect some buckets to be fully mined
-    assert(result != null && result < defaultConfig.bucketMax)
+    assertNotNull(result)
+    assertTrue(result < defaultConfig.bucketMax)
   }
 
   @Test

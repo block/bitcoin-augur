@@ -48,8 +48,8 @@ import java.time.Instant
  *   Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates. Transactions whose fee rate
  *   rounds to a bucket below this threshold are excluded.
  * @property maxFeeRate The maximum fee rate in sat/vB to consider (default: 22027.0).
- *   Fee estimates above this rate are returned as null; transactions above this rate
- *   are still counted as block weight in the highest bucket.
+ *   Fee estimates whose fee rate exceeds this bound are returned as null; transactions
+ *   above this rate are still counted as block weight in the highest bucket.
  */
 @OptIn(InternalAugurApi::class)
 public class FeeEstimator @JvmOverloads public constructor(

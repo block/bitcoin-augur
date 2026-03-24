@@ -93,8 +93,8 @@ val customFeeEstimator = FeeEstimator(
     minFeeRate = 0.1,
 
     // Maximum fee rate in sat/vB (default: 22027.0)
-    // Estimates above this rate are returned as null; transactions above this rate
-    // are still counted as block weight in the highest bucket
+    // Estimates whose fee rate exceeds this bound are returned as null;
+    // transactions above this rate are still counted as block weight in the highest bucket
     maxFeeRate = 1000.0
 )
 ```
