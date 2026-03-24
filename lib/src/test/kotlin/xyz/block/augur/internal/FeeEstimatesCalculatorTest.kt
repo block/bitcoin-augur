@@ -32,7 +32,7 @@ import kotlin.test.assertTrue
 class FeeEstimatesCalculatorTest {
   private val blockTargets = listOf(3.0, 12.0, 144.0)
   private val probabilities = listOf(0.5, 0.95)
-  private val defaultConfig = BucketConfig.DEFAULT
+  private val defaultLayout = BucketLayout.DEFAULT
 
   private val calculator =
     FeeEstimatesCalculator(
@@ -58,13 +58,13 @@ class FeeEstimatesCalculatorTest {
   @Test
   fun `test findBestIndex when all weights are mined`() {
     val weights = F64Array(5) { 0.0 }
-    assertEquals(defaultConfig.bucketMin, calculator.findBestIndex(weights))
+    assertEquals(defaultLayout.bucketMin, calculator.findBestIndex(weights))
   }
 
   @Test
   fun `test findBestIndex when no weights are fully mined`() {
     val weights = F64Array(5) { 1000.0 }
-    assertEquals(defaultConfig.bucketMax + 1, calculator.findBestIndex(weights))
+    assertEquals(defaultLayout.bucketMax + 1, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -76,8 +76,8 @@ class FeeEstimatesCalculatorTest {
     weights[3] = 1000.0 // unmined
     weights[4] = 1000.0 // unmined
 
-    // Should return defaultConfig.bucketMax - 1 since index 1 is the last fully mined bucket
-    assertEquals(defaultConfig.bucketMax - 1, calculator.findBestIndex(weights))
+    // Should return defaultLayout.bucketMax - 1 since index 1 is the last fully mined bucket
+    assertEquals(defaultLayout.bucketMax - 1, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -96,7 +96,7 @@ class FeeEstimatesCalculatorTest {
 
     // With these parameters, we expect some buckets to be fully mined
     assertNotNull(result)
-    assertTrue(result < defaultConfig.bucketMax)
+    assertTrue(result < defaultLayout.bucketMax)
   }
 
   @Test
@@ -155,7 +155,7 @@ class FeeEstimatesCalculatorTest {
     weights[3] = 1000.0
     weights[4] = 1000.0
 
-    assertEquals(defaultConfig.bucketMax, calculator.findBestIndex(weights))
+    assertEquals(defaultLayout.bucketMax, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -173,7 +173,7 @@ class FeeEstimatesCalculatorTest {
       )
 
     // With such a large block size, all buckets should be mined
-    assertEquals(defaultConfig.bucketMin, result)
+    assertEquals(defaultLayout.bucketMin, result)
   }
 
   @Test
@@ -194,7 +194,7 @@ class FeeEstimatesCalculatorTest {
     // Add weights: [4, 8, 12, 12, 12]
     // After second block: [0, 0, 12, 12, 12]
     // Last fully mined bucket is index 1
-    assertEquals(defaultConfig.bucketMax - 1, result)
+    assertEquals(defaultLayout.bucketMax - 1, result)
   }
 
   @Test
@@ -211,17 +211,17 @@ class FeeEstimatesCalculatorTest {
         blockSize = 100.0,
       )
 
-    assertEquals(defaultConfig.bucketMin, result)
+    assertEquals(defaultLayout.bucketMin, result)
   }
 
   @Test
   fun `test near-minimum fee bucket never emits sub 0_1 sat per vB`() {
-    val lowFeeConfig = BucketConfig(0.1)
-    val lowFeeCalculator = FeeEstimatesCalculator(probabilities, blockTargets, lowFeeConfig)
+    val lowFeeLayout = BucketLayout(0.1)
+    val lowFeeCalculator = FeeEstimatesCalculator(probabilities, blockTargets, lowFeeLayout)
 
     val nearMinimumFeeRate = 0.0998
     val bucketIndex = (ln(nearMinimumFeeRate) * 100).roundToInt()
-    assertEquals(lowFeeConfig.bucketMin, bucketIndex)
+    assertEquals(lowFeeLayout.bucketMin, bucketIndex)
 
     val snapshot =
       MempoolSnapshot(
@@ -230,8 +230,8 @@ class FeeEstimatesCalculatorTest {
         bucketedWeights = mapOf(bucketIndex to 4_000_000L),
       )
 
-    val mempoolBuckets = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, lowFeeConfig).buckets
-    val zeroInflows = F64Array(lowFeeConfig.arraySize) { 0.0 }
+    val mempoolBuckets = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, lowFeeLayout).buckets
+    val zeroInflows = F64Array(lowFeeLayout.arraySize) { 0.0 }
 
     val estimates =
       lowFeeCalculator.getFeeEstimates(
@@ -269,7 +269,7 @@ class FeeEstimatesCalculatorTest {
         blockSize = 1.0,
       )
 
-    assertEquals(defaultConfig.bucketMax + 1, result) // Index > defaultConfig.bucketMax, indicating no estimate
+    assertEquals(defaultLayout.bucketMax + 1, result) // Index > defaultLayout.bucketMax, indicating no estimate
   }
 
   @Test
@@ -315,24 +315,56 @@ class FeeEstimatesCalculatorTest {
   }
 
   @Test
-  fun `test getFeeEstimates includes estimate exactly at bucketMax fee rate`() {
-    // Create a config with a low maxFeeRate so we can easily hit the boundary
-    val config = BucketConfig(maxFeeRate = 10.0) // bucketMax = floor(ln(10)*100) = 230
-    val calc = FeeEstimatesCalculator(probabilities, blockTargets, config)
+  fun `test getFeeEstimates filters estimates above maxFeeRate`() {
+    // maxFeeRate = 1.5 means only estimates at exp(0/100) = 1.0 sat/vB (bucket 0) pass the filter.
+    // Estimates at bucket 1 (exp(0.01) ≈ 1.01) and above would be filtered IF they appear.
+    // We compare results with and without the filter to verify the output filtering.
+    val calcFiltered = FeeEstimatesCalculator(probabilities, blockTargets, BucketLayout.DEFAULT, maxFeeRate = 1.5)
+    val calcUnfiltered = FeeEstimatesCalculator(probabilities, blockTargets, BucketLayout.DEFAULT, maxFeeRate = 100000.0)
 
-    // Put all weight in a single bucket at bucketMax — after mining, the estimate
-    // should land exactly at exp(bucketMax/100) which must NOT be null
-    val weights = F64Array(config.arraySize) { 0.0 }
-    weights[0] = 4_000_000.0 // highest bucket (bucketMax)
+    // Spread heavy weight across all buckets so the simulation can't mine through them,
+    // producing estimates at high fee rates that exceed the filter
+    val weights = F64Array(defaultLayout.arraySize) { 4_000_000.0 }
+    val zeroInflows = F64Array(defaultLayout.arraySize) { 0.0 }
 
-    val zeroInflows = F64Array(config.arraySize) { 0.0 }
+    val filtered = calcFiltered.getFeeEstimates(weights, zeroInflows, zeroInflows.copy())
+    val unfiltered = calcUnfiltered.getFeeEstimates(weights, zeroInflows, zeroInflows.copy())
+
+    // Verify that the filtered calculator nulls out estimates that exceed maxFeeRate
+    var foundFiltered = false
+    for (i in filtered.indices) {
+      for (j in filtered[i].indices) {
+        val f = filtered[i][j]
+        val u = unfiltered[i][j]
+        if (f == null && u != null) {
+          // This estimate was filtered because it exceeds maxFeeRate=1.5
+          assertTrue(u > 1.5, "Filtered estimate should have been above maxFeeRate")
+          foundFiltered = true
+        }
+        if (f != null) {
+          assertTrue(f <= 1.5, "Non-null filtered estimate $f should be <= maxFeeRate 1.5")
+        }
+      }
+    }
+    assertTrue(foundFiltered, "At least one estimate should have been filtered by maxFeeRate")
+  }
+
+  @Test
+  fun `test getFeeEstimates preserves estimates at or below maxFeeRate`() {
+    // Use a maxFeeRate above the simulation ceiling's fee rate
+    val calc = FeeEstimatesCalculator(probabilities, blockTargets, BucketLayout.DEFAULT, maxFeeRate = 25000.0)
+
+    // Put all weight in bucket 1000 (≈ 22026 sat/vB), which is below 25000
+    val weights = F64Array(defaultLayout.arraySize) { 0.0 }
+    weights[0] = 4_000_000.0
+
+    val zeroInflows = F64Array(defaultLayout.arraySize) { 0.0 }
     val estimates = calc.getFeeEstimates(weights, zeroInflows, zeroInflows.copy())
 
-    // The estimate for the highest bucket should be exp(230/100) ≈ 9.97
-    // which is <= maxFeeRate (10.0), so it must be non-null
+    // exp(1000/100) ≈ 22026 < 25000, so estimates should be non-null
     estimates.forEach { row ->
       row.forEach { fee ->
-        assertNotNull(fee, "Estimate at bucketMax fee rate should not be null")
+        assertNotNull(fee, "Estimate at or below maxFeeRate should not be null")
       }
     }
   }

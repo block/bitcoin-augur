@@ -92,9 +92,9 @@ val customFeeEstimator = FeeEstimator(
     // Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates
     minFeeRate = 0.1,
 
-    // Maximum fee rate in sat/vB (default: 22027.0)
-    // Estimates whose fee rate exceeds this bound are returned as null;
-    // transactions above this rate are still counted as block weight in the highest bucket
+    // Maximum fee rate in sat/vB for reporting (default: 22027.0)
+    // Estimates whose fee rate exceeds this bound are returned as null.
+    // This is an output filter only — the simulation always models the full fee rate space.
     maxFeeRate = 1000.0
 )
 ```

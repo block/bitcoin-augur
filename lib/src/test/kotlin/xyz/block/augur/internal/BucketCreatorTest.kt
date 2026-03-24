@@ -136,49 +136,40 @@ class BucketCreatorTest {
 
     val buckets = BucketCreator.createFeeRateBuckets(transactions)
 
-    // The bucket index should be at BUCKET_MAX
-    assertTrue(buckets.containsKey(BucketConfig.DEFAULT.bucketMax))
-    assertEquals(400L, buckets[BucketConfig.DEFAULT.bucketMax])
+    // The bucket index should be at the simulation ceiling
+    assertTrue(buckets.containsKey(BucketLayout.DEFAULT.bucketMax))
+    assertEquals(400L, buckets[BucketLayout.DEFAULT.bucketMax])
   }
 
   @Test
-  fun `test BucketConfig bucketMin uses ceil so lowest bucket never undershoots minFeeRate`() {
-    val config01 = BucketConfig(0.1)
-    assertEquals(-230, config01.bucketMin)
+  fun `test BucketLayout bucketMin uses ceil so lowest bucket never undershoots minFeeRate`() {
+    val layout01 = BucketLayout(0.1)
+    assertEquals(-230, layout01.bucketMin)
 
-    val config10 = BucketConfig(1.0)
-    assertEquals(0, config10.bucketMin)
+    val layout10 = BucketLayout(1.0)
+    assertEquals(0, layout10.bucketMin)
 
     // 0.15 sat/vB: round would give -190 (exp(-1.90) ≈ 0.1496, below 0.15)
     // ceil gives -189 (exp(-1.89) ≈ 0.1511, above 0.15)
-    val config015 = BucketConfig(0.15)
-    assertEquals(-189, config015.bucketMin)
-    assertTrue(exp(config015.bucketMin.toDouble() / 100) >= 0.15)
+    val layout015 = BucketLayout(0.15)
+    assertEquals(-189, layout015.bucketMin)
+    assertTrue(exp(layout015.bucketMin.toDouble() / 100) >= 0.15)
   }
 
   @Test
-  fun `test BucketConfig bucketMax uses floor so highest bucket never overshoots maxFeeRate`() {
-    val configDefault = BucketConfig.DEFAULT
-    assertEquals(1000, configDefault.bucketMax)
-
-    // 1000 sat/vB: ln(1000) * 100 = 690.77..., floor = 690
-    // exp(690/100) = exp(6.90) ≈ 992.27, which is <= 1000
-    val config1000 = BucketConfig(maxFeeRate = 1000.0)
-    assertEquals(690, config1000.bucketMax)
-    assertTrue(exp(config1000.bucketMax.toDouble() / 100) <= 1000.0)
-
-    // 500 sat/vB: ln(500) * 100 = 621.46..., floor = 621
-    // exp(621/100) = exp(6.21) ≈ 496.58, which is <= 500
-    val config500 = BucketConfig(maxFeeRate = 500.0)
-    assertEquals(621, config500.bucketMax)
-    assertTrue(exp(config500.bucketMax.toDouble() / 100) <= 500.0)
+  fun `test BucketLayout has fixed bucketMax at simulation ceiling`() {
+    // bucketMax is always 1000 regardless of construction
+    assertEquals(1000, BucketLayout.DEFAULT.bucketMax)
+    assertEquals(1000, BucketLayout(0.1).bucketMax)
+    assertEquals(1000, BucketLayout(1.0).bucketMax)
+    assertEquals(1000, BucketLayout(5.0).bucketMax)
   }
 
   @Test
-  fun `test BucketConfig throws if discretized bucket range is empty`() {
-    // minFeeRate = 1.001, maxFeeRate = 1.002: bucketMin = ceil(ln(1.001)*100) = 1, bucketMax = floor(ln(1.002)*100) = 0
+  fun `test BucketLayout throws if minFeeRate too high for simulation ceiling`() {
+    // A minFeeRate that produces bucketMin > 1000 should fail
     assertFailsWith<IllegalArgumentException> {
-      BucketConfig(minFeeRate = 1.001, maxFeeRate = 1.002)
+      BucketLayout(minFeeRate = 30000.0) // ln(30000)*100 ≈ 1031 > 1000
     }
   }
 

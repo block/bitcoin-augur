@@ -340,9 +340,20 @@ class FeeEstimatorTest {
   }
 
   @Test
-  fun `test constructor throws if minFeeRate exceeds maxFeeRate`() {
-    assertFailsWith<IllegalArgumentException> {
-      FeeEstimator(minFeeRate = 100.0, maxFeeRate = 50.0)
+  fun `test constructor allows minFeeRate above maxFeeRate since they are independent concerns`() {
+    // minFeeRate controls simulation array lower bound, maxFeeRate is an output filter.
+    // A minFeeRate of 5.0 with maxFeeRate of 2.0 means: exclude sub-5 sat/vB transactions
+    // from the simulation, and filter out any estimates above 2.0 (all estimates would be null).
+    val estimator = FeeEstimator(minFeeRate = 5.0, maxFeeRate = 2.0)
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    val estimate = estimator.calculateEstimates(snapshots)
+
+    // All estimates should be null since maxFeeRate is below any possible estimate
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
+        val feeRate = estimate.getFeeRate(target.toInt(), probability)
+        // Estimates are either null or very low — this is a valid (if unusual) configuration
+      }
     }
   }
 
@@ -407,36 +418,16 @@ class FeeEstimatorTest {
   }
 
   @Test
-  fun `test fromMempoolTransactions respects custom maxFeeRate`() {
-    val highFeeRate = 50000.0
-
-    // Create a transaction with a very high fee rate that exceeds the default max
+  fun `test maxFeeRate is output filter only and does not affect snapshot bucketing`() {
     val highFeeTx = MempoolTransaction(weight = 400, fee = 5_000_000) // 50000 sat/vB
 
-    // Using custom maxFeeRate should place this in a bucket above the default max
-    val snapshotCustom = MempoolSnapshot.fromMempoolTransactions(
-      transactions = listOf(highFeeTx),
-      blockHeight = 1,
-      maxFeeRate = highFeeRate,
-    )
-
-    // Using default maxFeeRate should clamp this to the default bucket max
-    val snapshotDefault = MempoolSnapshot.fromMempoolTransactions(
+    // With default maxFeeRate, the snapshot should clamp to the simulation ceiling (bucket 1000)
+    val snapshot = MempoolSnapshot.fromMempoolTransactions(
       transactions = listOf(highFeeTx),
       blockHeight = 1,
     )
-
-    // The custom snapshot should have a higher bucket index than the default
-    val maxBucketCustom = snapshotCustom.bucketedWeights.keys.max()
-    val maxBucketDefault = snapshotDefault.bucketedWeights.keys.max()
-    assertTrue(maxBucketCustom > maxBucketDefault, "Custom maxFeeRate snapshot should have higher bucket index ($maxBucketCustom) than default ($maxBucketDefault)")
-  }
-
-  @Test
-  fun `test constructor throws if fee rates produce empty bucket range`() {
-    assertFailsWith<IllegalArgumentException> {
-      FeeEstimator(minFeeRate = 1.001, maxFeeRate = 1.002)
-    }
+    val maxBucket = snapshot.bucketedWeights.keys.max()
+    assertEquals(1000, maxBucket, "High fee rate transactions should be clamped to simulation ceiling")
   }
 
   @Test

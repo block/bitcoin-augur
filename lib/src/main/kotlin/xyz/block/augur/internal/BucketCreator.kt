@@ -18,42 +18,38 @@ package xyz.block.augur.internal
 
 import xyz.block.augur.MempoolTransaction
 import kotlin.math.ceil
-import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.min
 import kotlin.math.round
 
 /**
- * Holds bucket boundaries derived from minimum and maximum fee rates.
+ * Internal simulation array layout derived from the minimum fee rate.
+ *
+ * The array always extends to a fixed upper bound ([SIMULATION_BUCKET_MAX] = 1000, corresponding
+ * to ~22026 sat/vB). The user-facing `maxFeeRate` is applied as an output filter in
+ * [FeeEstimatesCalculator.prepareResultArray], not as an array sizing parameter.
  *
  * Uses ceil for [bucketMin] so the lowest bucket never represents a fee rate below [minFeeRate].
- * Uses floor for [bucketMax] so the highest bucket never represents a fee rate above [maxFeeRate].
  *
  * @property bucketMin Minimum bucket index, computed as ceil(ln(minFeeRate) * 100)
- * @property bucketMax Maximum bucket index, computed as floor(ln(maxFeeRate) * 100)
+ * @property bucketMax Fixed simulation upper bound (1000)
  * @property arraySize Total number of bucket array slots (bucketMax - bucketMin + 1)
  */
 @InternalAugurApi
-internal class BucketConfig(
+internal class BucketLayout(
   minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
-  maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
 ) {
   val bucketMin: Int
-  val bucketMax: Int
+  val bucketMax: Int = SIMULATION_BUCKET_MAX
   val arraySize: Int
 
   init {
     require(minFeeRate > 0.0) { "minFeeRate must be positive, was $minFeeRate" }
-    require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
-    require(minFeeRate < maxFeeRate) { "minFeeRate ($minFeeRate) must be less than maxFeeRate ($maxFeeRate)" }
     bucketMin = ceil(ln(minFeeRate) * 100).toInt()
-    bucketMax = floor(ln(maxFeeRate) * 100).toInt()
-    arraySize = bucketMax - bucketMin + 1
-    require(arraySize >= 1) {
-      "minFeeRate ($minFeeRate) and maxFeeRate ($maxFeeRate) are too close together: " +
-        "discretized bucket range is empty (bucketMin=$bucketMin, bucketMax=$bucketMax). " +
-        "Widen the gap between minFeeRate and maxFeeRate."
+    require(bucketMin <= bucketMax) {
+      "minFeeRate ($minFeeRate) is too high: bucketMin ($bucketMin) exceeds simulation ceiling ($bucketMax)"
     }
+    arraySize = bucketMax - bucketMin + 1
   }
 
   /**
@@ -69,9 +65,14 @@ internal class BucketConfig(
 
   companion object {
     internal const val DEFAULT_MIN_FEE_RATE = 1.0
-    internal const val DEFAULT_MAX_FEE_RATE = 22027.0 // > exp(10) ≈ 22026.47, so floor gives bucket 1000
 
-    val DEFAULT = BucketConfig()
+    /**
+     * Fixed simulation upper bound. Corresponds to floor(ln(22027) * 100) = 1000,
+     * preserving the legacy bucket count.
+     */
+    internal const val SIMULATION_BUCKET_MAX = 1000
+
+    val DEFAULT = BucketLayout()
   }
 }
 
@@ -86,28 +87,28 @@ internal object BucketCreator {
    */
   fun createFeeRateBuckets(
     feeRateWeightPairs: List<MempoolTransaction>,
-    bucketConfig: BucketConfig = BucketConfig.DEFAULT,
+    bucketLayout: BucketLayout = BucketLayout.DEFAULT,
   ): Map<Int, Long> =
     feeRateWeightPairs
-      .groupingBy { calculateBucketIndex(it.getFeeRate(), bucketConfig) }
+      .groupingBy { calculateBucketIndex(it.getFeeRate(), bucketLayout) }
       .fold(0L) { acc, tx -> acc + tx.weight }
       .toSortedMap()
 
   /**
    * Calculates bucket index using logarithms, providing more precision in the lower fee levels.
    *
-   * Above-max fee rates are clamped to [BucketConfig.bucketMax] so their block weight is
-   * preserved in the highest bucket. Below-min fee rates are intentionally NOT clamped here;
-   * they produce indices below [BucketConfig.bucketMin] and are dropped by
+   * Above-max fee rates are clamped to [BucketLayout.bucketMax] (the fixed simulation ceiling)
+   * so their block weight is preserved in the highest bucket. Below-min fee rates are intentionally
+   * NOT clamped here; they produce indices below [BucketLayout.bucketMin] and are dropped by
    * [MempoolSnapshotF64Array.fromMempoolSnapshot], since sub-relay-minimum transactions
    * should not influence fee estimates.
    */
-  private fun calculateBucketIndex(feeRate: Double, bucketConfig: BucketConfig): Int = min(
+  private fun calculateBucketIndex(feeRate: Double, bucketLayout: BucketLayout): Int = min(
     // round() is correct here: each transaction maps to its nearest bucket.
-    // BucketConfig uses ceil/floor for *boundaries* to guarantee the range stays within the
-    // user's configured min/max fee rates, but individual transactions should snap to the
+    // BucketLayout uses ceil for the lower *boundary* to guarantee the range stays within the
+    // user's configured min fee rate, but individual transactions should snap to the
     // closest discrete bucket rather than being biased up or down.
     (round(ln(feeRate) * 100).toInt()),
-    bucketConfig.bucketMax,
+    bucketLayout.bucketMax,
   )
 }

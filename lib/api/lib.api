@@ -74,8 +74,8 @@ public final class xyz/block/augur/MempoolSnapshot {
 public final class xyz/block/augur/MempoolSnapshot$Companion {
 	public final fun empty (ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
 	public static synthetic fun empty$default (Lxyz/block/augur/MempoolSnapshot$Companion;ILjava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
-	public final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;DD)Lxyz/block/augur/MempoolSnapshot;
-	public static synthetic fun fromMempoolTransactions$default (Lxyz/block/augur/MempoolSnapshot$Companion;Ljava/util/List;ILjava/time/Instant;DDILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
+	public final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;D)Lxyz/block/augur/MempoolSnapshot;
+	public static synthetic fun fromMempoolTransactions$default (Lxyz/block/augur/MempoolSnapshot$Companion;Ljava/util/List;ILjava/time/Instant;DILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
 }
 
 public final class xyz/block/augur/MempoolTransaction {

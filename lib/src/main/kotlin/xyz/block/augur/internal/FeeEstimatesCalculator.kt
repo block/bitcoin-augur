@@ -19,7 +19,6 @@ package xyz.block.augur.internal
 import org.apache.commons.math3.distribution.PoissonDistribution
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.F64Array.Companion.invoke
-import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -33,7 +32,8 @@ import kotlin.math.pow
 internal class FeeEstimatesCalculator(
   private val probabilities: List<Double>,
   private val blockTargets: List<Double>,
-  private val bucketConfig: BucketConfig = BucketConfig.DEFAULT,
+  private val bucketLayout: BucketLayout = BucketLayout.DEFAULT,
+  private val maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
 ) {
   private val expectedBlocksMined by lazy { getExpectedBlocksMined() }
 
@@ -44,7 +44,7 @@ internal class FeeEstimatesCalculator(
    * @param shortIntervalInflows Short-term inflow data (typically 30 minutes)
    * @param longIntervalInflows Long-term inflow data (typically 24 hours)
    * @return A 2D array of fee estimates where each element corresponds to a specific
-   *         block target and probability level. Values exceeding the max bucket threshold are null.
+   *         block target and probability level. Values exceeding [maxFeeRate] are null.
    */
   fun getFeeEstimates(
     mempoolSnapshot: F64Array,
@@ -173,9 +173,9 @@ internal class FeeEstimatesCalculator(
     // If index = -1, then no weights are fully mined so can't determine a sufficiently high rate.
     // Else, createFeeRateBuckets reversed the order, so subtract to recover the original index.
     return when (index) {
-      -2 -> bucketConfig.bucketMin // all weights are zero so we can use the cheapest fee rate
-      -1 -> bucketConfig.bucketMax + 1 // return null
-      else -> bucketConfig.toBucketIndex(index)
+      -2 -> bucketLayout.bucketMin // all weights are zero so we can use the cheapest fee rate
+      -1 -> bucketLayout.bucketMax + 1 // return null
+      else -> bucketLayout.toBucketIndex(index)
     }
   }
 
@@ -208,12 +208,9 @@ internal class FeeEstimatesCalculator(
    * F64Array can't accommodate nulls so we convert to traditional arrays.
    */
   private fun prepareResultArray(feeRates: F64Array): Array<Array<Double?>> {
-    // Maximum allowed fee rate based on the configured bucketMax
-    val maxAllowedFeeRate = exp(bucketConfig.bucketMax.toDouble() / 100)
-
     return Array(feeRates.shape[0]) { blockTargetIndex ->
       Array(feeRates.shape[1]) { probabilityIndex ->
-        feeRates[blockTargetIndex, probabilityIndex].takeIf { it <= maxAllowedFeeRate }
+        feeRates[blockTargetIndex, probabilityIndex].takeIf { it <= maxFeeRate }
       }
     }
   }
@@ -262,5 +259,6 @@ internal class FeeEstimatesCalculator(
 
   companion object {
     const val BLOCK_SIZE_WEIGHT_UNITS = 4_000_000
+    const val DEFAULT_MAX_FEE_RATE = 22027.0
   }
 }

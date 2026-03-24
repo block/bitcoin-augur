@@ -26,12 +26,12 @@ import kotlin.test.assertTrue
 
 @OptIn(InternalAugurApi::class)
 class MempoolSnapshotF64ArrayTest {
-  private val defaultConfig = BucketConfig.DEFAULT
+  private val defaultLayout = BucketLayout.DEFAULT
 
   @Test
   fun `fromMempoolSnapshot drops buckets below minimum`() {
-    val lowBucket = defaultConfig.bucketMin - 1
-    val validBucket = defaultConfig.bucketMin
+    val lowBucket = defaultLayout.bucketMin - 1
+    val validBucket = defaultLayout.bucketMin
     val snapshot =
       MempoolSnapshot(
         blockHeight = 100,
@@ -44,8 +44,8 @@ class MempoolSnapshotF64ArrayTest {
 
     val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot)
 
-    assertEquals(defaultConfig.arraySize, result.buckets.length)
-    val validIndex = defaultConfig.toArrayIndex(validBucket)
+    assertEquals(defaultLayout.arraySize, result.buckets.length)
+    val validIndex = defaultLayout.toArrayIndex(validBucket)
     assertEquals(600.0, result.buckets[validIndex])
 
     var totalWeight = 0.0
@@ -58,8 +58,8 @@ class MempoolSnapshotF64ArrayTest {
 
   @Test
   fun `fromMempoolSnapshot with custom minFeeRate accepts lower buckets`() {
-    val config = BucketConfig(0.1)
-    val lowBucket = config.bucketMin
+    val layout = BucketLayout(0.1)
+    val lowBucket = layout.bucketMin
     assertEquals(-230, lowBucket)
     val validBucket = 0 // 1 sat/vB
 
@@ -73,9 +73,9 @@ class MempoolSnapshotF64ArrayTest {
         ),
       )
 
-    val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, config)
+    val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, layout)
 
-    assertEquals(config.arraySize, result.buckets.length)
+    assertEquals(layout.arraySize, result.buckets.length)
 
     var totalWeight = 0.0
     for (i in 0 until result.buckets.length) {
@@ -86,12 +86,12 @@ class MempoolSnapshotF64ArrayTest {
 
   @Test
   fun `fromMempoolSnapshot ignores very low fee rates below configured minimum`() {
-    val config = BucketConfig(0.1)
+    val layout = BucketLayout(0.1)
     val veryLowFeeRate = 0.05
     val veryLowBucket = (ln(veryLowFeeRate) * 100).roundToInt() // -300
 
-    // Verify this bucket is indeed below the config's bucketMin
-    assertTrue(veryLowBucket < config.bucketMin)
+    // Verify this bucket is indeed below the layout's bucketMin
+    assertTrue(veryLowBucket < layout.bucketMin)
 
     val validBucket = 0 // 1 sat/vB
 
@@ -105,7 +105,7 @@ class MempoolSnapshotF64ArrayTest {
         ),
       )
 
-    val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, config)
+    val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, layout)
 
     // Should not throw, and should only include the valid bucket's weight
     var totalWeight = 0.0
@@ -117,9 +117,9 @@ class MempoolSnapshotF64ArrayTest {
 
   @Test
   fun `fromMempoolSnapshot folds above-max buckets into highest bucket`() {
-    val oversizedBucket = defaultConfig.bucketMax + 1
+    val oversizedBucket = defaultLayout.bucketMax + 1
     // Use a bucket below bucketMax so the folded weight and valid weight land in different slots
-    val validBucket = defaultConfig.bucketMax - 1
+    val validBucket = defaultLayout.bucketMax - 1
 
     val snapshot =
       MempoolSnapshot(
@@ -136,45 +136,12 @@ class MempoolSnapshotF64ArrayTest {
     // Above-max weight is folded into the highest bucket (index 0 = bucketMax)
     assertEquals(1000.0, result.buckets[0])
     // Valid bucket is in its own slot
-    assertEquals(500.0, result.buckets[defaultConfig.toArrayIndex(validBucket)])
+    assertEquals(500.0, result.buckets[defaultLayout.toArrayIndex(validBucket)])
     // Total weight is preserved
     var totalWeight = 0.0
     for (i in 0 until result.buckets.length) {
       totalWeight += result.buckets[i]
     }
     assertEquals(1500.0, totalWeight)
-  }
-
-  @Test
-  fun `fromMempoolSnapshot with custom maxFeeRate folds high-fee buckets`() {
-    // Use a lower maxFeeRate so some default-range buckets are above it
-    val config = BucketConfig(maxFeeRate = 500.0) // bucketMax = 621
-    val aboveMaxBucket = 700 // above 621, should be folded
-    val validBucket = 600 // within range
-
-    val snapshot =
-      MempoolSnapshot(
-        blockHeight = 100,
-        timestamp = Instant.now(),
-        bucketedWeights = mapOf(
-          aboveMaxBucket to 800L,
-          validBucket to 400L,
-        ),
-      )
-
-    val result = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, config)
-
-    assertEquals(config.arraySize, result.buckets.length)
-
-    // Above-max weight folded into index 0 (highest bucket)
-    assertEquals(800.0, result.buckets[0])
-    // Valid bucket at its correct position
-    assertEquals(400.0, result.buckets[config.toArrayIndex(validBucket)])
-
-    var totalWeight = 0.0
-    for (i in 0 until result.buckets.length) {
-      totalWeight += result.buckets[i]
-    }
-    assertEquals(1200.0, totalWeight)
   }
 }
