@@ -38,14 +38,17 @@ internal class BucketConfig(
   minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
   maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
 ) {
-  val bucketMin: Int = ceil(ln(minFeeRate) * 100).toInt()
-  val bucketMax: Int = floor(ln(maxFeeRate) * 100).toInt()
-  val arraySize: Int = bucketMax - bucketMin + 1
+  val bucketMin: Int
+  val bucketMax: Int
+  val arraySize: Int
 
   init {
     require(minFeeRate > 0.0) { "minFeeRate must be positive, was $minFeeRate" }
     require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
     require(minFeeRate < maxFeeRate) { "minFeeRate ($minFeeRate) must be less than maxFeeRate ($maxFeeRate)" }
+    bucketMin = ceil(ln(minFeeRate) * 100).toInt()
+    bucketMax = floor(ln(maxFeeRate) * 100).toInt()
+    arraySize = bucketMax - bucketMin + 1
     require(arraySize >= 1) {
       "minFeeRate ($minFeeRate) and maxFeeRate ($maxFeeRate) are too close together: " +
         "discretized bucket range is empty (bucketMin=$bucketMin, bucketMax=$bucketMax). " +
@@ -100,6 +103,10 @@ internal object BucketCreator {
    * should not influence fee estimates.
    */
   private fun calculateBucketIndex(feeRate: Double, bucketConfig: BucketConfig): Int = min(
+    // round() is correct here: each transaction maps to its nearest bucket.
+    // BucketConfig uses ceil/floor for *boundaries* to guarantee the range stays within the
+    // user's configured min/max fee rates, but individual transactions should snap to the
+    // closest discrete bucket rather than being biased up or down.
     (round(ln(feeRate) * 100).toInt()),
     bucketConfig.bucketMax,
   )

@@ -61,6 +61,10 @@ public data class MempoolSnapshot(
      *   Should match the [FeeEstimator]'s maxFeeRate.
      * @return A new [MempoolSnapshot] instance
      */
+    @Deprecated(
+      message = "Use FeeEstimator.createSnapshot() to ensure bucket boundaries match the estimator's config.",
+      replaceWith = ReplaceWith("FeeEstimator().createSnapshot(transactions, blockHeight, timestamp)"),
+    )
     @OptIn(InternalAugurApi::class)
     @JvmOverloads
     @JvmStatic

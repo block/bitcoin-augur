@@ -46,7 +46,7 @@ import java.time.Instant
  * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144)
  * @property minFeeRate The minimum fee rate in sat/vB to consider (default: 1.0). Set to 0.1 for
  *   Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates.
- * @property maxFeeRate The maximum fee rate in sat/vB to consider (default: 22026.0).
+ * @property maxFeeRate The maximum fee rate in sat/vB to consider (default: 22027.0).
  *   Fee estimates above this rate are returned as null; transactions above this rate
  *   are still counted as block weight in the highest bucket.
  */
@@ -67,9 +67,6 @@ public class FeeEstimator @JvmOverloads public constructor(
     require(blockTargets.isNotEmpty()) { "At least one block target must be provided" }
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
-    require(minFeeRate > 0.0) { "minFeeRate must be positive" }
-    require(maxFeeRate > 0.0) { "maxFeeRate must be positive" }
-    require(minFeeRate < maxFeeRate) { "minFeeRate must be less than maxFeeRate" }
     bucketConfig = BucketConfig(minFeeRate, maxFeeRate)
     feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketConfig)
   }
@@ -150,8 +147,11 @@ public class FeeEstimator @JvmOverloads public constructor(
    * @param blockTargets New block targets (null to keep current)
    * @param shortTermWindowDuration New short-term window duration (null to keep current)
    * @param longTermWindowDuration New long-term window duration (null to keep current)
+   * @param minFeeRate New minimum fee rate in sat/vB (null to keep current)
+   * @param maxFeeRate New maximum fee rate in sat/vB (null to keep current)
    * @return A new [FeeEstimator] instance with the specified settings
    */
+  @JvmOverloads
   public fun configure(
     probabilities: List<Double>? = null,
     blockTargets: List<Double>? = null,

@@ -21,8 +21,10 @@ import xyz.block.augur.test.TestUtils
 import java.time.Duration
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class FeeEstimatorTest {
   private val feeEstimator = FeeEstimator()
@@ -69,9 +71,8 @@ class FeeEstimatorTest {
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
-        assert(feeRate != null && feeRate > 0.0) {
-          "Fee rate should be positive for target=$target, probability=$probability"
-        }
+        assertNotNull(feeRate, "Fee rate should not be null for target=$target, probability=$probability")
+        assertTrue(feeRate > 0.0, "Fee rate should be positive for target=$target, probability=$probability")
       }
     }
   }
@@ -204,9 +205,8 @@ class FeeEstimatorTest {
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
-        assert(feeRate != null && feeRate > 0.0) {
-          "Fee rate should be positive for target=$target, probability=$probability"
-        }
+        assertNotNull(feeRate, "Fee rate should not be null for target=$target, probability=$probability")
+        assertTrue(feeRate > 0.0, "Fee rate should be positive for target=$target, probability=$probability")
       }
     }
   }
@@ -365,9 +365,8 @@ class FeeEstimatorTest {
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
-        assert(feeRate != null && feeRate > 0.0) {
-          "Fee rate should be positive for target=$target, probability=$probability"
-        }
+        assertNotNull(feeRate, "Fee rate should not be null for target=$target, probability=$probability")
+        assertTrue(feeRate > 0.0, "Fee rate should be positive for target=$target, probability=$probability")
       }
     }
   }
