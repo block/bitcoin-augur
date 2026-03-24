@@ -121,8 +121,9 @@ public class FeeEstimator @JvmOverloads public constructor(
   /**
    * Creates a [MempoolSnapshot] from raw transactions using this estimator's fee rate bounds.
    *
-   * Prefer this over [MempoolSnapshot.fromMempoolTransactions] to ensure the snapshot's bucket
-   * boundaries match this estimator's configuration.
+   * Use this instead of [MempoolSnapshot.fromMempoolTransactions] when the estimator has a
+   * custom [minFeeRate], to ensure the snapshot's bucket boundaries match this estimator's
+   * configuration.
    *
    * @param transactions List of mempool transactions
    * @param blockHeight Current block height
@@ -214,7 +215,7 @@ public class FeeEstimator @JvmOverloads public constructor(
 
     /**
      * Default maximum fee rate in sat/vB for reporting. Estimates above this value are
-     * returned as null. Chosen as ~exp(10) to preserve the legacy simulation bucket count.
+     * returned as null. Rounded up from exp(10) ≈ 22026.47 to preserve the legacy simulation bucket count.
      */
     @OptIn(InternalAugurApi::class)
     public val DEFAULT_MAX_FEE_RATE: Double = FeeEstimatesCalculator.DEFAULT_MAX_FEE_RATE

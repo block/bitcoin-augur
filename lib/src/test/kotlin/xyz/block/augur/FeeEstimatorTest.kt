@@ -351,8 +351,10 @@ class FeeEstimatorTest {
     // All estimates should be null since maxFeeRate is below any possible estimate
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
-        val feeRate = estimate.getFeeRate(target.toInt(), probability)
-        // Estimates are either null or very low — this is a valid (if unusual) configuration
+        assertNull(
+          estimate.getFeeRate(target.toInt(), probability),
+          "Fee rate should be null when maxFeeRate ($2.0) is below minFeeRate ($5.0) for target=$target, probability=$probability"
+        )
       }
     }
   }

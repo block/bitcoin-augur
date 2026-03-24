@@ -55,9 +55,6 @@ public data class MempoolSnapshot(
      * @param transactions List of mempool transactions
      * @param blockHeight Current block height
      * @param timestamp When the snapshot is taken (defaults to now)
-     * @param minFeeRate Minimum fee rate in sat/vB for bucketing (default: 1.0).
-     *   If using custom fee rate bounds, prefer [FeeEstimator.createSnapshot] to ensure
-     *   the snapshot's bucket boundaries match the estimator's configuration.
      * @return A new [MempoolSnapshot] instance
      */
     @OptIn(InternalAugurApi::class)
@@ -65,7 +62,22 @@ public data class MempoolSnapshot(
       transactions: List<MempoolTransaction>,
       blockHeight: Int,
       timestamp: Instant = Instant.now(),
-      minFeeRate: Double = FeeEstimator.DEFAULT_MIN_FEE_RATE,
+    ): MempoolSnapshot {
+      val bucketedWeights = BucketCreator.createFeeRateBuckets(transactions)
+
+      return MempoolSnapshot(
+        blockHeight = blockHeight,
+        timestamp = timestamp,
+        bucketedWeights = bucketedWeights,
+      )
+    }
+
+    @OptIn(InternalAugurApi::class)
+    internal fun fromMempoolTransactions(
+      transactions: List<MempoolTransaction>,
+      blockHeight: Int,
+      timestamp: Instant = Instant.now(),
+      minFeeRate: Double,
     ): MempoolSnapshot {
       val bucketLayout = BucketLayout(minFeeRate)
       val bucketedWeights = BucketCreator.createFeeRateBuckets(transactions, bucketLayout)

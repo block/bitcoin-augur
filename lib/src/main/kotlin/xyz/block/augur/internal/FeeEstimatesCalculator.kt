@@ -210,7 +210,7 @@ internal class FeeEstimatesCalculator(
   private fun prepareResultArray(feeRates: F64Array): Array<Array<Double?>> {
     return Array(feeRates.shape[0]) { blockTargetIndex ->
       Array(feeRates.shape[1]) { probabilityIndex ->
-        feeRates[blockTargetIndex, probabilityIndex].takeIf { it <= maxFeeRate }
+        feeRates[blockTargetIndex, probabilityIndex].takeIf { it < maxFeeRate }
       }
     }
   }
