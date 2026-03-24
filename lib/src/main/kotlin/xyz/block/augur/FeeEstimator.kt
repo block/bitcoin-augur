@@ -45,7 +45,8 @@ import java.time.Instant
  * @property probabilities The confidence levels to calculate (default: 5%, 20%, 50%, 80%, 95%)
  * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144)
  * @property minFeeRate The minimum fee rate in sat/vB to consider (default: 1.0). Set to 0.1 for
- *   Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates.
+ *   Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates. Transactions whose fee rate
+ *   rounds to a bucket below this threshold are excluded.
  * @property maxFeeRate The maximum fee rate in sat/vB to consider (default: 22027.0).
  *   Fee estimates above this rate are returned as null; transactions above this rate
  *   are still counted as block weight in the highest bucket.

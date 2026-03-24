@@ -39,7 +39,6 @@ dependencies {
 val feeEstimator = FeeEstimator()
 
 // Create a mempool snapshot from current transactions
-// Using feeEstimator.createSnapshot ensures bucket boundaries match the estimator's config
 val mempoolSnapshot = feeEstimator.createSnapshot(
     transactions = currentMempoolTransactions.map {
         MempoolTransaction(

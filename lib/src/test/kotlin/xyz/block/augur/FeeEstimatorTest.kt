@@ -409,7 +409,6 @@ class FeeEstimatorTest {
   @Test
   fun `test fromMempoolTransactions respects custom maxFeeRate`() {
     val highFeeRate = 50000.0
-    val estimator = FeeEstimator(maxFeeRate = highFeeRate)
 
     // Create a transaction with a very high fee rate that exceeds the default max
     val highFeeTx = MempoolTransaction(weight = 400, fee = 5_000_000) // 50000 sat/vB
