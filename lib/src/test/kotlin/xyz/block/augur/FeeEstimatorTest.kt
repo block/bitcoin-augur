@@ -328,4 +328,21 @@ class FeeEstimatorTest {
       feeEstimator.calculateEstimates(snapshots, numOfBlocks = 2.0)
     }
   }
+
+  @Test
+  fun `test constructor throws if minFeeRate is zero or negative`() {
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = 0.0)
+    }
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = -1.0)
+    }
+  }
+
+  @Test
+  fun `test constructor throws if minFeeRate exceeds maximum`() {
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = 30000.0)
+    }
+  }
 }

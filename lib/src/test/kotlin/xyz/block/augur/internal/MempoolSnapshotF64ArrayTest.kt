@@ -59,7 +59,8 @@ class MempoolSnapshotF64ArrayTest {
   @Test
   fun `fromMempoolSnapshot with custom minFeeRate accepts lower buckets`() {
     val config = BucketConfig(0.1)
-    val lowBucket = (ln(0.1) * 100).roundToInt() // -230, valid for this config
+    val lowBucket = config.bucketMin
+    assertEquals(-230, lowBucket)
     val validBucket = 0 // 1 sat/vB
 
     val snapshot =

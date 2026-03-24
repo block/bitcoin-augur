@@ -18,6 +18,8 @@ package xyz.block.augur.internal
 
 import org.junit.jupiter.api.Test
 import xyz.block.augur.MempoolTransaction
+import kotlin.math.ceil
+import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.test.assertEquals
@@ -140,12 +142,18 @@ class BucketCreatorTest {
   }
 
   @Test
-  fun `test BucketConfig bucketMin matches ln of minFeeRate times 100 rounded`() {
+  fun `test BucketConfig bucketMin uses ceil so lowest bucket never undershoots minFeeRate`() {
     val config01 = BucketConfig(0.1)
-    assertEquals((ln(0.1) * 100).roundToInt(), config01.bucketMin)
+    assertEquals(-230, config01.bucketMin)
 
     val config10 = BucketConfig(1.0)
     assertEquals(0, config10.bucketMin)
+
+    // 0.15 sat/vB: round would give -190 (exp(-1.90) ≈ 0.1496, below 0.15)
+    // ceil gives -189 (exp(-1.89) ≈ 0.1511, above 0.15)
+    val config015 = BucketConfig(0.15)
+    assertEquals(-189, config015.bucketMin)
+    assertTrue(exp(config015.bucketMin.toDouble() / 100) >= 0.15)
   }
 
   @Test

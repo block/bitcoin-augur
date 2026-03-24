@@ -64,6 +64,9 @@ public class FeeEstimator @JvmOverloads public constructor(
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
     require(minFeeRate > 0.0) { "minFeeRate must be positive" }
+    require(minFeeRate <= MAX_MIN_FEE_RATE) {
+      "minFeeRate must be <= $MAX_MIN_FEE_RATE sat/vB"
+    }
   }
 
   /**
@@ -177,5 +180,11 @@ public class FeeEstimator @JvmOverloads public constructor(
      * Default minimum fee rate in sat/vB. Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes.
      */
     public const val DEFAULT_MIN_FEE_RATE: Double = 1.0
+
+    /**
+     * Maximum allowed value for minFeeRate. Values above this would produce a bucket index
+     * exceeding BUCKET_MAX, resulting in a non-positive array size.
+     */
+    internal const val MAX_MIN_FEE_RATE: Double = 22026.0
   }
 }

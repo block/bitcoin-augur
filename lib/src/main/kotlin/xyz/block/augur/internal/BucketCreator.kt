@@ -17,6 +17,7 @@
 package xyz.block.augur.internal
 
 import xyz.block.augur.MempoolTransaction
+import kotlin.math.ceil
 import kotlin.math.ln
 import kotlin.math.min
 import kotlin.math.round
@@ -24,12 +25,14 @@ import kotlin.math.round
 /**
  * Holds bucket boundaries derived from a minimum fee rate.
  *
- * @property bucketMin Minimum bucket index, computed as round(ln(minFeeRate) * 100)
+ * Uses ceil so the lowest bucket never represents a fee rate below [minFeeRate].
+ *
+ * @property bucketMin Minimum bucket index, computed as ceil(ln(minFeeRate) * 100)
  * @property arraySize Total number of bucket array slots (BUCKET_MAX - bucketMin + 1)
  */
 @InternalAugurApi
 internal class BucketConfig(minFeeRate: Double) {
-  val bucketMin: Int = round(ln(minFeeRate) * 100).toInt()
+  val bucketMin: Int = ceil(ln(minFeeRate) * 100).toInt()
   val arraySize: Int = BucketCreator.BUCKET_MAX - bucketMin + 1
 
   companion object {
