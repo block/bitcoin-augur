@@ -72,7 +72,7 @@ internal class BucketLayout(
      */
     internal const val SIMULATION_BUCKET_MAX = 1000
 
-    val DEFAULT by lazy { BucketLayout() }
+    val DEFAULT = BucketLayout()
   }
 }
 

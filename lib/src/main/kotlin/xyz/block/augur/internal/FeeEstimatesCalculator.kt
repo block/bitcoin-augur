@@ -259,6 +259,8 @@ internal class FeeEstimatesCalculator(
 
   companion object {
     const val BLOCK_SIZE_WEIGHT_UNITS = 4_000_000
+
+    // Rounded up from exp(10) ≈ 22026.47 so estimates at the simulation ceiling pass the <= filter
     const val DEFAULT_MAX_FEE_RATE = 22027.0
   }
 }

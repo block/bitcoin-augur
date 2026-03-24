@@ -340,6 +340,14 @@ class FeeEstimatorTest {
   }
 
   @Test
+  fun `test constructor throws if minFeeRate exceeds simulation ceiling`() {
+    val error = assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = 30000.0)
+    }
+    assertTrue(error.message!!.contains("at most"), "Error should mention the upper bound, was: ${error.message}")
+  }
+
+  @Test
   fun `test constructor allows minFeeRate above maxFeeRate since they are independent concerns`() {
     // minFeeRate controls simulation array lower bound, maxFeeRate is an output filter.
     // A minFeeRate of 5.0 with maxFeeRate of 2.0 means: exclude sub-5 sat/vB transactions

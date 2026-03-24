@@ -58,8 +58,7 @@ public data class MempoolSnapshot(
      * @return A new [MempoolSnapshot] instance
      */
     @Deprecated(
-      message = "Use FeeEstimator.createSnapshot() to ensure snapshot bucket layout matches the estimator's minFeeRate.",
-      replaceWith = ReplaceWith("feeEstimator.createSnapshot(transactions, blockHeight, timestamp)"),
+      message = "Prefer FeeEstimator.createSnapshot() for consistency, though the snapshot itself is layout-agnostic.",
     )
     @OptIn(InternalAugurApi::class)
     public fun fromMempoolTransactions(
@@ -81,9 +80,8 @@ public data class MempoolSnapshot(
       transactions: List<MempoolTransaction>,
       blockHeight: Int,
       timestamp: Instant = Instant.now(),
-      minFeeRate: Double,
+      bucketLayout: BucketLayout,
     ): MempoolSnapshot {
-      val bucketLayout = BucketLayout(minFeeRate)
       val bucketedWeights = BucketCreator.createFeeRateBuckets(transactions, bucketLayout)
 
       return MempoolSnapshot(
