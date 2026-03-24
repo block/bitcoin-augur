@@ -383,9 +383,7 @@ class FeeEstimatorTest {
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
         if (feeRate != null) {
-          assert(feeRate <= 50.0) {
-            "Fee rate $feeRate should be <= 50.0 for target=$target, probability=$probability"
-          }
+          assertTrue(feeRate <= 50.0, "Fee rate $feeRate should be <= 50.0 for target=$target, probability=$probability")
         }
       }
     }
@@ -403,9 +401,7 @@ class FeeEstimatorTest {
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       val feeRate = estimate.getFeeRate(target.toInt(), 0.5)
       if (feeRate != null) {
-        assert(feeRate <= 500.0) {
-          "Fee rate $feeRate should be <= 500.0 after configure"
-        }
+        assertTrue(feeRate <= 500.0, "Fee rate $feeRate should be <= 500.0 after configure")
       }
     }
   }
@@ -434,9 +430,7 @@ class FeeEstimatorTest {
     // The custom snapshot should have a higher bucket index than the default
     val maxBucketCustom = snapshotCustom.bucketedWeights.keys.max()
     val maxBucketDefault = snapshotDefault.bucketedWeights.keys.max()
-    assert(maxBucketCustom > maxBucketDefault) {
-      "Custom maxFeeRate snapshot should have higher bucket index ($maxBucketCustom) than default ($maxBucketDefault)"
-    }
+    assertTrue(maxBucketCustom > maxBucketDefault, "Custom maxFeeRate snapshot should have higher bucket index ($maxBucketCustom) than default ($maxBucketDefault)")
   }
 
   @Test
@@ -457,9 +451,7 @@ class FeeEstimatorTest {
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       val feeRate = estimate.getFeeRate(target.toInt(), 0.5)
       if (feeRate != null) {
-        assert(feeRate <= 100.0) {
-          "Fee rate $feeRate should be <= 100.0 after configure with maxFeeRate=100"
-        }
+        assertTrue(feeRate <= 100.0, "Fee rate $feeRate should be <= 100.0 after configure with maxFeeRate=100")
       }
     }
   }

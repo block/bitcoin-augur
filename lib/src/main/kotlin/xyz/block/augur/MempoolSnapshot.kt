@@ -63,11 +63,9 @@ public data class MempoolSnapshot(
      */
     @Deprecated(
       message = "Use FeeEstimator.createSnapshot() to ensure bucket boundaries match the estimator's config.",
-      replaceWith = ReplaceWith("FeeEstimator().createSnapshot(transactions, blockHeight, timestamp)"),
     )
     @OptIn(InternalAugurApi::class)
     @JvmOverloads
-    @JvmStatic
     public fun fromMempoolTransactions(
       transactions: List<MempoolTransaction>,
       blockHeight: Int,

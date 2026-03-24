@@ -71,10 +71,6 @@ public final class xyz/block/augur/MempoolSnapshot {
 	public final fun copy (ILjava/time/Instant;Ljava/util/Map;)Lxyz/block/augur/MempoolSnapshot;
 	public static synthetic fun copy$default (Lxyz/block/augur/MempoolSnapshot;ILjava/time/Instant;Ljava/util/Map;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
 	public fun equals (Ljava/lang/Object;)Z
-	public static final fun fromMempoolTransactions (Ljava/util/List;I)Lxyz/block/augur/MempoolSnapshot;
-	public static final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
-	public static final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;D)Lxyz/block/augur/MempoolSnapshot;
-	public static final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;DD)Lxyz/block/augur/MempoolSnapshot;
 	public final fun getBlockHeight ()I
 	public final fun getBucketedWeights ()Ljava/util/Map;
 	public final fun getTimestamp ()Ljava/time/Instant;
