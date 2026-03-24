@@ -56,16 +56,14 @@ public data class MempoolSnapshot(
      * @param blockHeight Current block height
      * @param timestamp When the snapshot is taken (defaults to now)
      * @param minFeeRate Minimum fee rate in sat/vB for bucketing (default: 1.0).
-     *   Should match the [FeeEstimator]'s minFeeRate.
+     *   If using custom fee rate bounds, prefer [FeeEstimator.createSnapshot] to ensure
+     *   the snapshot's bucket boundaries match the estimator's configuration.
      * @param maxFeeRate Maximum fee rate in sat/vB for bucketing (default: 22027.0).
-     *   Should match the [FeeEstimator]'s maxFeeRate.
+     *   If using custom fee rate bounds, prefer [FeeEstimator.createSnapshot] to ensure
+     *   the snapshot's bucket boundaries match the estimator's configuration.
      * @return A new [MempoolSnapshot] instance
      */
-    @Deprecated(
-      message = "Use FeeEstimator.createSnapshot() to ensure bucket boundaries match the estimator's config.",
-    )
     @OptIn(InternalAugurApi::class)
-    @JvmOverloads
     public fun fromMempoolTransactions(
       transactions: List<MempoolTransaction>,
       blockHeight: Int,

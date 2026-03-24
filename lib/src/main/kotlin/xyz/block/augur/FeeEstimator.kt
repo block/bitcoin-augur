@@ -127,7 +127,6 @@ public class FeeEstimator @JvmOverloads public constructor(
    * @param timestamp When the snapshot is taken (defaults to now)
    * @return A new [MempoolSnapshot] instance
    */
-  @JvmOverloads
   public fun createSnapshot(
     transactions: List<MempoolTransaction>,
     blockHeight: Int,
@@ -151,7 +150,6 @@ public class FeeEstimator @JvmOverloads public constructor(
    * @param maxFeeRate New maximum fee rate in sat/vB (null to keep current)
    * @return A new [FeeEstimator] instance with the specified settings
    */
-  @JvmOverloads
   public fun configure(
     probabilities: List<Double>? = null,
     blockTargets: List<Double>? = null,
@@ -214,7 +212,8 @@ public class FeeEstimator @JvmOverloads public constructor(
     public val DEFAULT_MIN_FEE_RATE: Double = BucketConfig.DEFAULT_MIN_FEE_RATE
 
     /**
-     * Default maximum fee rate in sat/vB (~exp(10)). Fee estimates above this are returned as null.
+     * Default maximum fee rate in sat/vB. Chosen so that `floor(ln(22027) * 100) == 1000`,
+     * preserving the legacy bucket count from before fee rate bounds were configurable.
      */
     @OptIn(InternalAugurApi::class)
     public val DEFAULT_MAX_FEE_RATE: Double = BucketConfig.DEFAULT_MAX_FEE_RATE
