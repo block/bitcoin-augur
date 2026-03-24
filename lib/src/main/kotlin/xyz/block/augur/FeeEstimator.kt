@@ -16,9 +16,9 @@
 
 package xyz.block.augur
 
+import xyz.block.augur.internal.BucketLayout
 import xyz.block.augur.internal.FeeEstimatesCalculator
 import xyz.block.augur.internal.InflowCalculator
-import xyz.block.augur.internal.InternalAugurApi
 import xyz.block.augur.internal.MempoolSnapshotF64Array
 import java.time.Duration
 import java.time.Instant
@@ -43,21 +43,38 @@ import java.time.Instant
  *
  * @property probabilities The confidence levels to calculate (default: 5%, 20%, 50%, 80%, 95%)
  * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144)
+ * @property minFeeRate The minimum fee rate in sat/vB for the simulation lower bound (default: 1.0).
+ *   Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates. Snapshots
+ *   store all bucketed transactions regardless of this value; `minFeeRate` controls which buckets
+ *   are included when the snapshot is converted to the internal simulation array. Transactions whose
+ *   bucket index falls below `ceil(ln(minFeeRate) * 100)` are excluded from the simulation. Note:
+ *   because per-transaction bucketing uses `round()` while the layout boundary uses `ceil()`, a
+ *   transaction at exactly `minFeeRate` may round to a bucket just below the boundary for some
+ *   values; this does not affect the two standard values (1.0 and 0.1) where `ceil` and `round`
+ *   agree.
+ * @property maxFeeRate The maximum fee rate in sat/vB for reporting (default: 22027.0).
+ *   Fee estimates whose fee rate exceeds this bound are returned as null. This is an output filter
+ *   only — the internal simulation always models the full fee rate space regardless of this value.
  */
-@OptIn(InternalAugurApi::class)
 public class FeeEstimator @JvmOverloads public constructor(
   private val probabilities: List<Double> = DEFAULT_PROBABILITIES,
   private val blockTargets: List<Double> = DEFAULT_BLOCK_TARGETS,
   private val shortTermWindowDuration: Duration = Duration.ofMinutes(30),
   private val longTermWindowDuration: Duration = Duration.ofHours(24),
+  private val minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
+  private val maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
 ) {
-  private val feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets)
+  private val bucketLayout: BucketLayout
+  private val feeEstimatesCalculator: FeeEstimatesCalculator
 
   init {
     require(probabilities.isNotEmpty()) { "At least one probability level must be provided" }
     require(blockTargets.isNotEmpty()) { "At least one block target must be provided" }
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
+    require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
+    bucketLayout = BucketLayout(minFeeRate)
+    feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketLayout, maxFeeRate)
   }
 
   /**
@@ -83,15 +100,15 @@ public class FeeEstimator @JvmOverloads public constructor(
 
     // Sort the snapshots by timestamp to ensure chronological order
     val orderedSnapshots = mempoolSnapshots.sortedBy { it.timestamp }
-    val simdSnapshots = orderedSnapshots.map { MempoolSnapshotF64Array.fromMempoolSnapshot(it) }
+    val simdSnapshots = orderedSnapshots.map { MempoolSnapshotF64Array.fromMempoolSnapshot(it, bucketLayout) }
 
     // Extract latest mempool weights and calculate inflow rates
     val latestMempoolWeights = simdSnapshots.last().buckets
-    val shortTermInflows = InflowCalculator.calculateInflows(simdSnapshots, shortTermWindowDuration)
-    val longTermInflows = InflowCalculator.calculateInflows(simdSnapshots, longTermWindowDuration)
+    val shortTermInflows = InflowCalculator.calculateInflows(simdSnapshots, shortTermWindowDuration, bucketLayout)
+    val longTermInflows = InflowCalculator.calculateInflows(simdSnapshots, longTermWindowDuration, bucketLayout)
 
     val (calculator, targets) = if (numOfBlocks != null) {
-      FeeEstimatesCalculator(probabilities, listOf(numOfBlocks)) to listOf(numOfBlocks)
+      FeeEstimatesCalculator(probabilities, listOf(numOfBlocks), bucketLayout, maxFeeRate) to listOf(numOfBlocks)
     } else {
       feeEstimatesCalculator to blockTargets
     }
@@ -112,6 +129,8 @@ public class FeeEstimator @JvmOverloads public constructor(
    * @param blockTargets New block targets (null to keep current)
    * @param shortTermWindowDuration New short-term window duration (null to keep current)
    * @param longTermWindowDuration New long-term window duration (null to keep current)
+   * @param minFeeRate New minimum fee rate in sat/vB (null to keep current)
+   * @param maxFeeRate New maximum fee rate in sat/vB (null to keep current)
    * @return A new [FeeEstimator] instance with the specified settings
    */
   public fun configure(
@@ -119,11 +138,15 @@ public class FeeEstimator @JvmOverloads public constructor(
     blockTargets: List<Double>? = null,
     shortTermWindowDuration: Duration? = null,
     longTermWindowDuration: Duration? = null,
+    minFeeRate: Double? = null,
+    maxFeeRate: Double? = null,
   ): FeeEstimator = FeeEstimator(
     probabilities = probabilities ?: this.probabilities,
     blockTargets = blockTargets ?: this.blockTargets,
     shortTermWindowDuration = shortTermWindowDuration ?: this.shortTermWindowDuration,
     longTermWindowDuration = longTermWindowDuration ?: this.longTermWindowDuration,
+    minFeeRate = minFeeRate ?: this.minFeeRate,
+    maxFeeRate = maxFeeRate ?: this.maxFeeRate,
   )
 
   /**
@@ -164,5 +187,17 @@ public class FeeEstimator @JvmOverloads public constructor(
      * Default confidence levels for fee estimation (5%, 20%, 50%, 80%, 95%).
      */
     public val DEFAULT_PROBABILITIES: List<Double> = listOf(0.05, 0.20, 0.50, 0.80, 0.95)
+
+    /**
+     * Default minimum fee rate in sat/vB. Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes.
+     */
+    public val DEFAULT_MIN_FEE_RATE: Double = BucketLayout.DEFAULT_MIN_FEE_RATE
+
+    /**
+     * Default maximum fee rate in sat/vB for reporting. Estimates above this value are
+     * returned as null. Rounded up from exp(10) ≈ 22026.47 so that estimates at the
+     * simulation ceiling (bucket 1000) pass the filter.
+     */
+    public val DEFAULT_MAX_FEE_RATE: Double = FeeEstimatesCalculator.DEFAULT_MAX_FEE_RATE
   }
 }

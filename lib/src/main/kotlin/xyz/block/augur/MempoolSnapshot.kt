@@ -17,7 +17,6 @@
 package xyz.block.augur
 
 import xyz.block.augur.internal.BucketCreator
-import xyz.block.augur.internal.InternalAugurApi
 import java.time.Instant
 
 /**
@@ -56,7 +55,6 @@ public data class MempoolSnapshot(
      * @param timestamp When the snapshot is taken (defaults to now)
      * @return A new [MempoolSnapshot] instance
      */
-    @OptIn(InternalAugurApi::class)
     public fun fromMempoolTransactions(
       transactions: List<MempoolTransaction>,
       blockHeight: Int,

@@ -22,7 +22,7 @@ val feeEstimator = FeeEstimator()
 
 // Create a mempool snapshot from current transactions
 val mempoolSnapshot = MempoolSnapshot.fromMempoolTransactions(
-    transactions = currentMempoolTransactions.map { 
+    transactions = currentMempoolTransactions.map {
         MempoolTransaction(
             weight = it.weight.toLong(),
             fee = it.baseFee // in satoshis

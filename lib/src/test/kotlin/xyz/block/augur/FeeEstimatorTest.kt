@@ -21,8 +21,10 @@ import xyz.block.augur.test.TestUtils
 import java.time.Duration
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class FeeEstimatorTest {
   private val feeEstimator = FeeEstimator()
@@ -69,9 +71,8 @@ class FeeEstimatorTest {
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
-        assert(feeRate != null && feeRate > 0.0) {
-          "Fee rate should be positive for target=$target, probability=$probability"
-        }
+        assertNotNull(feeRate, "Fee rate should not be null for target=$target, probability=$probability")
+        assertTrue(feeRate > 0.0, "Fee rate should be positive for target=$target, probability=$probability")
       }
     }
   }
@@ -204,9 +205,8 @@ class FeeEstimatorTest {
     FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
-        assert(feeRate != null && feeRate > 0.0) {
-          "Fee rate should be positive for target=$target, probability=$probability"
-        }
+        assertNotNull(feeRate, "Fee rate should not be null for target=$target, probability=$probability")
+        assertTrue(feeRate > 0.0, "Fee rate should be positive for target=$target, probability=$probability")
       }
     }
   }
@@ -326,6 +326,133 @@ class FeeEstimatorTest {
     val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
     assertFailsWith<IllegalArgumentException> {
       feeEstimator.calculateEstimates(snapshots, numOfBlocks = 2.0)
+    }
+  }
+
+  @Test
+  fun `test constructor throws if minFeeRate is zero or negative`() {
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = 0.0)
+    }
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = -1.0)
+    }
+  }
+
+  @Test
+  fun `test constructor throws if minFeeRate exceeds simulation ceiling`() {
+    val error = assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = 30000.0)
+    }
+    assertTrue(error.message!!.contains("too high"), "Error should mention the upper bound, was: ${error.message}")
+  }
+
+  @Test
+  fun `test constructor allows minFeeRate above maxFeeRate since they are independent concerns`() {
+    // minFeeRate controls simulation array lower bound, maxFeeRate is an output filter.
+    // A minFeeRate of 5.0 with maxFeeRate of 2.0 means: exclude sub-5 sat/vB transactions
+    // from the simulation, and filter out any estimates above 2.0 (all estimates would be null).
+    val estimator = FeeEstimator(minFeeRate = 5.0, maxFeeRate = 2.0)
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    val estimate = estimator.calculateEstimates(snapshots)
+
+    // All estimates should be null since maxFeeRate is below any possible estimate
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
+        assertNull(
+          estimate.getFeeRate(target.toInt(), probability),
+          "Fee rate should be null when maxFeeRate ($2.0) is below minFeeRate ($5.0) for target=$target, probability=$probability"
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `test constructor throws if maxFeeRate is zero or negative`() {
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(maxFeeRate = 0.0)
+    }
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(maxFeeRate = -1.0)
+    }
+  }
+
+  @Test
+  fun `test estimates with custom minFeeRate produces valid results`() {
+    val estimator = FeeEstimator(minFeeRate = 0.1)
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    val estimate = estimator.calculateEstimates(snapshots)
+
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
+        val feeRate = estimate.getFeeRate(target.toInt(), probability)
+        assertNotNull(feeRate, "Fee rate should not be null for target=$target, probability=$probability")
+        assertTrue(feeRate > 0.0, "Fee rate should be positive for target=$target, probability=$probability")
+      }
+    }
+  }
+
+  @Test
+  fun `test estimates with custom maxFeeRate caps estimates`() {
+    // Use a low maxFeeRate so some high-confidence estimates may be null
+    val estimator = FeeEstimator(maxFeeRate = 50.0)
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    val estimate = estimator.calculateEstimates(snapshots)
+
+    // All non-null estimates should be at or below the max bucket's fee rate
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
+        val feeRate = estimate.getFeeRate(target.toInt(), probability)
+        if (feeRate != null) {
+          assertTrue(feeRate <= 50.0, "Fee rate $feeRate should be <= 50.0 for target=$target, probability=$probability")
+        }
+      }
+    }
+  }
+
+  @Test
+  fun `test configure preserves minFeeRate and maxFeeRate`() {
+    val estimator = FeeEstimator(minFeeRate = 0.1, maxFeeRate = 500.0)
+    val reconfigured = estimator.configure(probabilities = listOf(0.5, 0.95))
+
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    val estimate = reconfigured.calculateEstimates(snapshots)
+
+    // Should still work with the preserved fee rate bounds
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      val feeRate = estimate.getFeeRate(target.toInt(), 0.5)
+      if (feeRate != null) {
+        assertTrue(feeRate <= 500.0, "Fee rate $feeRate should be <= 500.0 after configure")
+      }
+    }
+  }
+
+  @Test
+  fun `test maxFeeRate is output filter only and does not affect snapshot bucketing`() {
+    val highFeeTx = MempoolTransaction(weight = 400, fee = 5_000_000) // 50000 sat/vB
+
+    // With default maxFeeRate, the snapshot should clamp to the simulation ceiling (bucket 1000)
+    val snapshot = MempoolSnapshot.fromMempoolTransactions(
+      transactions = listOf(highFeeTx),
+      blockHeight = 1,
+    )
+    val maxBucket = snapshot.bucketedWeights.keys.max()
+    assertEquals(1000, maxBucket, "High fee rate transactions should be clamped to simulation ceiling")
+  }
+
+  @Test
+  fun `test configure can update minFeeRate and maxFeeRate`() {
+    val estimator = FeeEstimator()
+    val reconfigured = estimator.configure(minFeeRate = 0.1, maxFeeRate = 100.0)
+
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    val estimate = reconfigured.calculateEstimates(snapshots)
+
+    FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
+      val feeRate = estimate.getFeeRate(target.toInt(), 0.5)
+      if (feeRate != null) {
+        assertTrue(feeRate <= 100.0, "Fee rate $feeRate should be <= 100.0 after configure with maxFeeRate=100")
+      }
     }
   }
 }

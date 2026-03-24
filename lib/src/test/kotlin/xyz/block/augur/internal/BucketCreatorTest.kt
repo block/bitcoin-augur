@@ -18,12 +18,13 @@ package xyz.block.augur.internal
 
 import org.junit.jupiter.api.Test
 import xyz.block.augur.MempoolTransaction
+import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-@OptIn(InternalAugurApi::class)
 class BucketCreatorTest {
   @Test
   fun `test createFeeRateBuckets with single transaction`() {
@@ -134,14 +135,41 @@ class BucketCreatorTest {
 
     val buckets = BucketCreator.createFeeRateBuckets(transactions)
 
-    // The bucket index should be at BUCKET_MAX
-    assertTrue(buckets.containsKey(BucketCreator.BUCKET_MAX))
-    assertEquals(400L, buckets[BucketCreator.BUCKET_MAX])
+    // The bucket index should be at the simulation ceiling
+    assertTrue(buckets.containsKey(BucketLayout.DEFAULT.bucketMax))
+    assertEquals(400L, buckets[BucketLayout.DEFAULT.bucketMax])
   }
 
   @Test
-  fun `test BUCKET_MIN matches ln(0_1) times 100 rounded`() {
-    assertEquals((ln(0.1) * 100).roundToInt(), BucketCreator.BUCKET_MIN)
+  fun `test BucketLayout bucketMin uses ceil so lowest bucket never undershoots minFeeRate`() {
+    val layout01 = BucketLayout(0.1)
+    assertEquals(-230, layout01.bucketMin)
+
+    val layout10 = BucketLayout(1.0)
+    assertEquals(0, layout10.bucketMin)
+
+    // 0.15 sat/vB: round would give -190 (exp(-1.90) ≈ 0.1496, below 0.15)
+    // ceil gives -189 (exp(-1.89) ≈ 0.1511, above 0.15)
+    val layout015 = BucketLayout(0.15)
+    assertEquals(-189, layout015.bucketMin)
+    assertTrue(exp(layout015.bucketMin.toDouble() / 100) >= 0.15)
+  }
+
+  @Test
+  fun `test BucketLayout has fixed bucketMax at simulation ceiling`() {
+    // bucketMax is always 1000 regardless of construction
+    assertEquals(1000, BucketLayout.DEFAULT.bucketMax)
+    assertEquals(1000, BucketLayout(0.1).bucketMax)
+    assertEquals(1000, BucketLayout(1.0).bucketMax)
+    assertEquals(1000, BucketLayout(5.0).bucketMax)
+  }
+
+  @Test
+  fun `test BucketLayout throws if minFeeRate too high for simulation ceiling`() {
+    // A minFeeRate that produces bucketMin > 1000 should fail
+    assertFailsWith<IllegalArgumentException> {
+      BucketLayout(minFeeRate = 30000.0) // ln(30000)*100 ≈ 1031 > 1000
+    }
   }
 
   @Test
