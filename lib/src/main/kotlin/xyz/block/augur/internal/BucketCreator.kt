@@ -22,6 +22,22 @@ import kotlin.math.min
 import kotlin.math.round
 
 /**
+ * Holds bucket boundaries derived from a minimum fee rate.
+ *
+ * @property bucketMin Minimum bucket index, computed as round(ln(minFeeRate) * 100)
+ * @property arraySize Total number of bucket array slots (BUCKET_MAX - bucketMin + 1)
+ */
+@InternalAugurApi
+internal class BucketConfig(minFeeRate: Double) {
+  val bucketMin: Int = round(ln(minFeeRate) * 100).toInt()
+  val arraySize: Int = BucketCreator.BUCKET_MAX - bucketMin + 1
+
+  companion object {
+    val DEFAULT = BucketConfig(1.0)
+  }
+}
+
+/**
  * Utility functions for creating buckets from fee and weight data.
  */
 @InternalAugurApi
@@ -32,19 +48,7 @@ internal object BucketCreator {
   const val BUCKET_MAX = 1000
 
   /**
-   * Minimum bucket index corresponding to 0.1 sat/vByte (Bitcoin Core 29.1/30.0+).
-   * Calculated as round(ln(0.1) * 100) = -230
-   */
-  const val BUCKET_MIN = -230
-
-  /**
-   * Total number of bucket array slots needed to store buckets from BUCKET_MIN to BUCKET_MAX.
-   * Size = BUCKET_MAX - BUCKET_MIN + 1 = 1000 - (-230) + 1 = 1231
-   */
-  const val BUCKET_ARRAY_SIZE = BUCKET_MAX - BUCKET_MIN + 1
-
-  /**
-   * Converts a bucket index (BUCKET_MIN..BUCKET_MAX) to the corresponding array position.
+   * Converts a bucket index to the corresponding array position.
    * Buckets are stored in reverse order so that the highest fee rate (BUCKET_MAX) is at index 0.
    */
   fun toArrayIndex(bucket: Int): Int = BUCKET_MAX - bucket

@@ -140,8 +140,12 @@ class BucketCreatorTest {
   }
 
   @Test
-  fun `test BUCKET_MIN matches ln(0_1) times 100 rounded`() {
-    assertEquals((ln(0.1) * 100).roundToInt(), BucketCreator.BUCKET_MIN)
+  fun `test BucketConfig bucketMin matches ln of minFeeRate times 100 rounded`() {
+    val config01 = BucketConfig(0.1)
+    assertEquals((ln(0.1) * 100).roundToInt(), config01.bucketMin)
+
+    val config10 = BucketConfig(1.0)
+    assertEquals(0, config10.bucketMin)
   }
 
   @Test

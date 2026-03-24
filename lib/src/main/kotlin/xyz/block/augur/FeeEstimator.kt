@@ -16,6 +16,7 @@
 
 package xyz.block.augur
 
+import xyz.block.augur.internal.BucketConfig
 import xyz.block.augur.internal.FeeEstimatesCalculator
 import xyz.block.augur.internal.InflowCalculator
 import xyz.block.augur.internal.InternalAugurApi
@@ -43,6 +44,8 @@ import java.time.Instant
  *
  * @property probabilities The confidence levels to calculate (default: 5%, 20%, 50%, 80%, 95%)
  * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144)
+ * @property minFeeRate The minimum fee rate in sat/vB to consider (default: 1.0). Set to 0.1 for
+ *   Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates.
  */
 @OptIn(InternalAugurApi::class)
 public class FeeEstimator @JvmOverloads public constructor(
@@ -50,14 +53,17 @@ public class FeeEstimator @JvmOverloads public constructor(
   private val blockTargets: List<Double> = DEFAULT_BLOCK_TARGETS,
   private val shortTermWindowDuration: Duration = Duration.ofMinutes(30),
   private val longTermWindowDuration: Duration = Duration.ofHours(24),
+  private val minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
 ) {
-  private val feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets)
+  private val bucketConfig = BucketConfig(minFeeRate)
+  private val feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketConfig)
 
   init {
     require(probabilities.isNotEmpty()) { "At least one probability level must be provided" }
     require(blockTargets.isNotEmpty()) { "At least one block target must be provided" }
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
+    require(minFeeRate > 0.0) { "minFeeRate must be positive" }
   }
 
   /**
@@ -83,15 +89,15 @@ public class FeeEstimator @JvmOverloads public constructor(
 
     // Sort the snapshots by timestamp to ensure chronological order
     val orderedSnapshots = mempoolSnapshots.sortedBy { it.timestamp }
-    val simdSnapshots = orderedSnapshots.map { MempoolSnapshotF64Array.fromMempoolSnapshot(it) }
+    val simdSnapshots = orderedSnapshots.map { MempoolSnapshotF64Array.fromMempoolSnapshot(it, bucketConfig) }
 
     // Extract latest mempool weights and calculate inflow rates
     val latestMempoolWeights = simdSnapshots.last().buckets
-    val shortTermInflows = InflowCalculator.calculateInflows(simdSnapshots, shortTermWindowDuration)
-    val longTermInflows = InflowCalculator.calculateInflows(simdSnapshots, longTermWindowDuration)
+    val shortTermInflows = InflowCalculator.calculateInflows(simdSnapshots, shortTermWindowDuration, bucketConfig)
+    val longTermInflows = InflowCalculator.calculateInflows(simdSnapshots, longTermWindowDuration, bucketConfig)
 
     val (calculator, targets) = if (numOfBlocks != null) {
-      FeeEstimatesCalculator(probabilities, listOf(numOfBlocks)) to listOf(numOfBlocks)
+      FeeEstimatesCalculator(probabilities, listOf(numOfBlocks), bucketConfig) to listOf(numOfBlocks)
     } else {
       feeEstimatesCalculator to blockTargets
     }
@@ -119,11 +125,13 @@ public class FeeEstimator @JvmOverloads public constructor(
     blockTargets: List<Double>? = null,
     shortTermWindowDuration: Duration? = null,
     longTermWindowDuration: Duration? = null,
+    minFeeRate: Double? = null,
   ): FeeEstimator = FeeEstimator(
     probabilities = probabilities ?: this.probabilities,
     blockTargets = blockTargets ?: this.blockTargets,
     shortTermWindowDuration = shortTermWindowDuration ?: this.shortTermWindowDuration,
     longTermWindowDuration = longTermWindowDuration ?: this.longTermWindowDuration,
+    minFeeRate = minFeeRate ?: this.minFeeRate,
   )
 
   /**
@@ -164,5 +172,10 @@ public class FeeEstimator @JvmOverloads public constructor(
      * Default confidence levels for fee estimation (5%, 20%, 50%, 80%, 95%).
      */
     public val DEFAULT_PROBABILITIES: List<Double> = listOf(0.05, 0.20, 0.50, 0.80, 0.95)
+
+    /**
+     * Default minimum fee rate in sat/vB. Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes.
+     */
+    public const val DEFAULT_MIN_FEE_RATE: Double = 1.0
   }
 }

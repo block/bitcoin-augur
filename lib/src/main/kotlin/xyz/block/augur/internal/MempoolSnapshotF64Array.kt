@@ -33,12 +33,14 @@ internal data class MempoolSnapshotF64Array(
     /**
      * Converts a [MempoolSnapshot] to [MempoolSnapshotF64Array] for efficient calculations.
      */
-    fun fromMempoolSnapshot(snapshot: MempoolSnapshot): MempoolSnapshotF64Array {
-      val feeRateBuckets = F64Array(BucketCreator.BUCKET_ARRAY_SIZE)
+    fun fromMempoolSnapshot(
+      snapshot: MempoolSnapshot,
+      bucketConfig: BucketConfig = BucketConfig.DEFAULT,
+    ): MempoolSnapshotF64Array {
+      val feeRateBuckets = F64Array(bucketConfig.arraySize)
       snapshot.bucketedWeights.forEach { (bucket, weight) ->
-        // Remove buckets below BUCKET_MIN (~0.1 sat/vB; round() admits ~0.0998 here,
-        // which converts back to ~0.10026 sat/vB so we never emit a sub-0.1 estimate)
-        if (bucket in BucketCreator.BUCKET_MIN..BucketCreator.BUCKET_MAX) {
+        // Remove buckets outside the configured range
+        if (bucket in bucketConfig.bucketMin..BucketCreator.BUCKET_MAX) {
           // Inserting into reverse order will allow us to mine the highest fee rate buckets first
           feeRateBuckets[BucketCreator.toArrayIndex(bucket)] = weight.toDouble()
         }

@@ -20,7 +20,6 @@ import org.apache.commons.math3.distribution.PoissonDistribution
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.F64Array.Companion.invoke
 import xyz.block.augur.internal.BucketCreator.BUCKET_MAX
-import xyz.block.augur.internal.BucketCreator.BUCKET_MIN
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.pow
@@ -35,6 +34,7 @@ import kotlin.math.pow
 internal class FeeEstimatesCalculator(
   private val probabilities: List<Double>,
   private val blockTargets: List<Double>,
+  private val bucketConfig: BucketConfig = BucketConfig.DEFAULT,
 ) {
   private val expectedBlocksMined by lazy { getExpectedBlocksMined() }
 
@@ -174,7 +174,7 @@ internal class FeeEstimatesCalculator(
     // If index = -1, then no weights are fully mined so can't determine a sufficiently high rate.
     // Else, createFeeRateBuckets reversed the order, so subtract to recover the original index.
     return when (index) {
-      -2 -> BUCKET_MIN // all weights are zero so we can use the cheapest fee rate
+      -2 -> bucketConfig.bucketMin // all weights are zero so we can use the cheapest fee rate
       -1 -> BUCKET_MAX + 1 // return null
       else -> BucketCreator.toBucketIndex(index)
     }

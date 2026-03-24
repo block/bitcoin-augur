@@ -86,7 +86,11 @@ val customFeeEstimator = FeeEstimator(
     probabilities = listOf(0.1, 0.25, 0.5, 0.75, 0.9, 0.99),
 
     // Custom block targets
-    blockTargets = listOf(1.0, 2.0, 3.0, 6.0, 12.0, 24.0, 48.0, 72.0)
+    blockTargets = listOf(1.0, 2.0, 3.0, 6.0, 12.0, 24.0, 48.0, 72.0),
+
+    // Minimum fee rate in sat/vB (default: 1.0)
+    // Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates
+    minFeeRate = 0.1
 )
 ```
 

@@ -20,7 +20,6 @@ import org.jetbrains.bio.viktor.F64Array
 import org.junit.jupiter.api.Test
 import xyz.block.augur.MempoolSnapshot
 import xyz.block.augur.internal.BucketCreator.BUCKET_MAX
-import xyz.block.augur.internal.BucketCreator.BUCKET_MIN
 import java.time.Instant
 import kotlin.math.exp
 import kotlin.math.ln
@@ -33,6 +32,7 @@ import kotlin.test.assertTrue
 class FeeEstimatesCalculatorTest {
   private val blockTargets = listOf(3.0, 12.0, 144.0)
   private val probabilities = listOf(0.5, 0.95)
+  private val defaultConfig = BucketConfig.DEFAULT
 
   private val calculator =
     FeeEstimatesCalculator(
@@ -58,7 +58,7 @@ class FeeEstimatesCalculatorTest {
   @Test
   fun `test findBestIndex when all weights are mined`() {
     val weights = F64Array(5) { 0.0 }
-    assertEquals(BUCKET_MIN, calculator.findBestIndex(weights))
+    assertEquals(defaultConfig.bucketMin, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -172,7 +172,7 @@ class FeeEstimatesCalculatorTest {
       )
 
     // With such a large block size, all buckets should be mined
-    assertEquals(BUCKET_MIN, result)
+    assertEquals(defaultConfig.bucketMin, result)
   }
 
   @Test
@@ -210,14 +210,17 @@ class FeeEstimatesCalculatorTest {
         blockSize = 100.0,
       )
 
-    assertEquals(BUCKET_MIN, result)
+    assertEquals(defaultConfig.bucketMin, result)
   }
 
   @Test
   fun `test near-minimum fee bucket never emits sub 0_1 sat per vB`() {
+    val lowFeeConfig = BucketConfig(0.1)
+    val lowFeeCalculator = FeeEstimatesCalculator(probabilities, blockTargets, lowFeeConfig)
+
     val nearMinimumFeeRate = 0.0998
     val bucketIndex = (ln(nearMinimumFeeRate) * 100).roundToInt()
-    assertEquals(BUCKET_MIN, bucketIndex)
+    assertEquals(lowFeeConfig.bucketMin, bucketIndex)
 
     val snapshot =
       MempoolSnapshot(
@@ -226,11 +229,11 @@ class FeeEstimatesCalculatorTest {
         bucketedWeights = mapOf(bucketIndex to 4_000_000L),
       )
 
-    val mempoolBuckets = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot).buckets
-    val zeroInflows = F64Array(BucketCreator.BUCKET_ARRAY_SIZE) { 0.0 }
+    val mempoolBuckets = MempoolSnapshotF64Array.fromMempoolSnapshot(snapshot, lowFeeConfig).buckets
+    val zeroInflows = F64Array(lowFeeConfig.arraySize) { 0.0 }
 
     val estimates =
-      calculator.getFeeEstimates(
+      lowFeeCalculator.getFeeEstimates(
         mempoolBuckets,
         zeroInflows,
         zeroInflows.copy(),

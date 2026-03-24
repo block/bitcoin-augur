@@ -37,8 +37,9 @@ internal object InflowCalculator {
   fun calculateInflows(
     mempoolSnapshots: List<MempoolSnapshotF64Array>,
     timeframe: Duration,
+    bucketConfig: BucketConfig = BucketConfig.DEFAULT,
   ): F64Array {
-    if (mempoolSnapshots.isEmpty()) return F64Array(BucketCreator.BUCKET_ARRAY_SIZE)
+    if (mempoolSnapshots.isEmpty()) return F64Array(bucketConfig.arraySize)
 
     // First sort the snapshots by timestamp
     val orderedSnapshots = mempoolSnapshots.sortedBy { it.timestamp }
@@ -47,7 +48,7 @@ internal object InflowCalculator {
     val startTime = endTime - timeframe
 
     val relevantSnapshots = orderedSnapshots.filter { it.timestamp in startTime..endTime }
-    val inflows = F64Array(BucketCreator.BUCKET_ARRAY_SIZE)
+    val inflows = F64Array(bucketConfig.arraySize)
 
     // Group snapshots by block height
     val snapshotsByBlock = relevantSnapshots.groupBy { it.blockHeight }
