@@ -39,10 +39,16 @@ internal data class MempoolSnapshotF64Array(
     ): MempoolSnapshotF64Array {
       val feeRateBuckets = F64Array(bucketConfig.arraySize)
       snapshot.bucketedWeights.forEach { (bucket, weight) ->
-        // Remove buckets outside the configured range
-        if (bucket in bucketConfig.bucketMin..BucketCreator.BUCKET_MAX) {
-          // Inserting into reverse order will allow us to mine the highest fee rate buckets first
-          feeRateBuckets[BucketCreator.toArrayIndex(bucket)] = weight.toDouble()
+        when {
+          bucket > bucketConfig.bucketMax -> {
+            // Fold above-max into the highest bucket so their block weight is still counted
+            feeRateBuckets[0] += weight.toDouble()
+          }
+          bucket >= bucketConfig.bucketMin -> {
+            // Inserting into reverse order will allow us to mine the highest fee rate buckets first
+            feeRateBuckets[bucketConfig.toArrayIndex(bucket)] += weight.toDouble()
+          }
+          // else: below minimum, drop
         }
       }
 

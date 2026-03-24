@@ -46,6 +46,9 @@ import java.time.Instant
  * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144)
  * @property minFeeRate The minimum fee rate in sat/vB to consider (default: 1.0). Set to 0.1 for
  *   Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates.
+ * @property maxFeeRate The maximum fee rate in sat/vB to consider (default: 22026.0).
+ *   Fee estimates above this rate are returned as null; transactions above this rate
+ *   are still counted as block weight in the highest bucket.
  */
 @OptIn(InternalAugurApi::class)
 public class FeeEstimator @JvmOverloads public constructor(
@@ -54,8 +57,9 @@ public class FeeEstimator @JvmOverloads public constructor(
   private val shortTermWindowDuration: Duration = Duration.ofMinutes(30),
   private val longTermWindowDuration: Duration = Duration.ofHours(24),
   private val minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
+  private val maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
 ) {
-  private val bucketConfig = BucketConfig(minFeeRate)
+  private val bucketConfig = BucketConfig(minFeeRate, maxFeeRate)
   private val feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketConfig)
 
   init {
@@ -64,9 +68,8 @@ public class FeeEstimator @JvmOverloads public constructor(
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
     require(minFeeRate > 0.0) { "minFeeRate must be positive" }
-    require(minFeeRate <= MAX_MIN_FEE_RATE) {
-      "minFeeRate must be <= $MAX_MIN_FEE_RATE sat/vB"
-    }
+    require(maxFeeRate > 0.0) { "maxFeeRate must be positive" }
+    require(minFeeRate < maxFeeRate) { "minFeeRate must be less than maxFeeRate" }
   }
 
   /**
@@ -129,12 +132,14 @@ public class FeeEstimator @JvmOverloads public constructor(
     shortTermWindowDuration: Duration? = null,
     longTermWindowDuration: Duration? = null,
     minFeeRate: Double? = null,
+    maxFeeRate: Double? = null,
   ): FeeEstimator = FeeEstimator(
     probabilities = probabilities ?: this.probabilities,
     blockTargets = blockTargets ?: this.blockTargets,
     shortTermWindowDuration = shortTermWindowDuration ?: this.shortTermWindowDuration,
     longTermWindowDuration = longTermWindowDuration ?: this.longTermWindowDuration,
     minFeeRate = minFeeRate ?: this.minFeeRate,
+    maxFeeRate = maxFeeRate ?: this.maxFeeRate,
   )
 
   /**
@@ -182,9 +187,8 @@ public class FeeEstimator @JvmOverloads public constructor(
     public const val DEFAULT_MIN_FEE_RATE: Double = 1.0
 
     /**
-     * Maximum allowed value for minFeeRate. Values above this would produce a bucket index
-     * exceeding BUCKET_MAX, resulting in a non-positive array size.
+     * Default maximum fee rate in sat/vB (~exp(10)). Fee estimates above this are returned as null.
      */
-    internal const val MAX_MIN_FEE_RATE: Double = 22026.0
+    public const val DEFAULT_MAX_FEE_RATE: Double = 22027.0
   }
 }

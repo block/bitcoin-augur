@@ -18,7 +18,6 @@ package xyz.block.augur.internal
 
 import org.junit.jupiter.api.Test
 import xyz.block.augur.MempoolTransaction
-import kotlin.math.ceil
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
@@ -137,8 +136,8 @@ class BucketCreatorTest {
     val buckets = BucketCreator.createFeeRateBuckets(transactions)
 
     // The bucket index should be at BUCKET_MAX
-    assertTrue(buckets.containsKey(BucketCreator.BUCKET_MAX))
-    assertEquals(400L, buckets[BucketCreator.BUCKET_MAX])
+    assertTrue(buckets.containsKey(BucketConfig.DEFAULT.bucketMax))
+    assertEquals(400L, buckets[BucketConfig.DEFAULT.bucketMax])
   }
 
   @Test
@@ -154,6 +153,24 @@ class BucketCreatorTest {
     val config015 = BucketConfig(0.15)
     assertEquals(-189, config015.bucketMin)
     assertTrue(exp(config015.bucketMin.toDouble() / 100) >= 0.15)
+  }
+
+  @Test
+  fun `test BucketConfig bucketMax uses floor so highest bucket never overshoots maxFeeRate`() {
+    val configDefault = BucketConfig.DEFAULT
+    assertEquals(1000, configDefault.bucketMax)
+
+    // 1000 sat/vB: ln(1000) * 100 = 690.77..., floor = 690
+    // exp(690/100) = exp(6.90) ≈ 992.27, which is <= 1000
+    val config1000 = BucketConfig(maxFeeRate = 1000.0)
+    assertEquals(690, config1000.bucketMax)
+    assertTrue(exp(config1000.bucketMax.toDouble() / 100) <= 1000.0)
+
+    // 500 sat/vB: ln(500) * 100 = 621.46..., floor = 621
+    // exp(621/100) = exp(6.21) ≈ 496.58, which is <= 500
+    val config500 = BucketConfig(maxFeeRate = 500.0)
+    assertEquals(621, config500.bucketMax)
+    assertTrue(exp(config500.bucketMax.toDouble() / 100) <= 500.0)
   }
 
   @Test

@@ -19,7 +19,6 @@ package xyz.block.augur.internal
 import org.apache.commons.math3.distribution.PoissonDistribution
 import org.jetbrains.bio.viktor.F64Array
 import org.jetbrains.bio.viktor.F64Array.Companion.invoke
-import xyz.block.augur.internal.BucketCreator.BUCKET_MAX
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.pow
@@ -175,8 +174,8 @@ internal class FeeEstimatesCalculator(
     // Else, createFeeRateBuckets reversed the order, so subtract to recover the original index.
     return when (index) {
       -2 -> bucketConfig.bucketMin // all weights are zero so we can use the cheapest fee rate
-      -1 -> BUCKET_MAX + 1 // return null
-      else -> BucketCreator.toBucketIndex(index)
+      -1 -> bucketConfig.bucketMax + 1 // return null
+      else -> bucketConfig.toBucketIndex(index)
     }
   }
 
@@ -209,12 +208,12 @@ internal class FeeEstimatesCalculator(
    * F64Array can't accommodate nulls so we convert to traditional arrays.
    */
   private fun prepareResultArray(feeRates: F64Array): Array<Array<Double?>> {
-    // Maximum allowed fee rate based on the BUCKET_MAX constant
-    val maxAllowedFeeRate = exp(BUCKET_MAX.toDouble() / 100)
+    // Maximum allowed fee rate based on the configured bucketMax
+    val maxAllowedFeeRate = exp(bucketConfig.bucketMax.toDouble() / 100)
 
     return Array(feeRates.shape[0]) { blockTargetIndex ->
       Array(feeRates.shape[1]) { probabilityIndex ->
-        feeRates[blockTargetIndex, probabilityIndex].takeIf { it < maxAllowedFeeRate }
+        feeRates[blockTargetIndex, probabilityIndex].takeIf { it <= maxAllowedFeeRate }
       }
     }
   }

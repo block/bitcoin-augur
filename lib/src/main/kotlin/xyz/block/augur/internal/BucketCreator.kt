@@ -18,25 +18,46 @@ package xyz.block.augur.internal
 
 import xyz.block.augur.MempoolTransaction
 import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.min
 import kotlin.math.round
 
 /**
- * Holds bucket boundaries derived from a minimum fee rate.
+ * Holds bucket boundaries derived from minimum and maximum fee rates.
  *
- * Uses ceil so the lowest bucket never represents a fee rate below [minFeeRate].
+ * Uses ceil for [bucketMin] so the lowest bucket never represents a fee rate below [minFeeRate].
+ * Uses floor for [bucketMax] so the highest bucket never represents a fee rate above [maxFeeRate].
  *
  * @property bucketMin Minimum bucket index, computed as ceil(ln(minFeeRate) * 100)
- * @property arraySize Total number of bucket array slots (BUCKET_MAX - bucketMin + 1)
+ * @property bucketMax Maximum bucket index, computed as floor(ln(maxFeeRate) * 100)
+ * @property arraySize Total number of bucket array slots (bucketMax - bucketMin + 1)
  */
 @InternalAugurApi
-internal class BucketConfig(minFeeRate: Double) {
+internal class BucketConfig(
+  minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
+  maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
+) {
   val bucketMin: Int = ceil(ln(minFeeRate) * 100).toInt()
-  val arraySize: Int = BucketCreator.BUCKET_MAX - bucketMin + 1
+  val bucketMax: Int = floor(ln(maxFeeRate) * 100).toInt()
+  val arraySize: Int = bucketMax - bucketMin + 1
+
+  /**
+   * Converts a bucket index (bucketMin..bucketMax) to the corresponding array position.
+   * Buckets are stored in reverse order so that the highest fee rate (bucketMax) is at index 0.
+   */
+  fun toArrayIndex(bucket: Int): Int = bucketMax - bucket
+
+  /**
+   * Converts an array position back to the original bucket index.
+   */
+  fun toBucketIndex(arrayIndex: Int): Int = bucketMax - arrayIndex
 
   companion object {
-    val DEFAULT = BucketConfig(1.0)
+    internal const val DEFAULT_MIN_FEE_RATE = 1.0
+    internal const val DEFAULT_MAX_FEE_RATE = 22027.0 // > exp(10) ≈ 22026.47, so floor gives bucket 1000
+
+    val DEFAULT = BucketConfig()
   }
 }
 
@@ -46,36 +67,23 @@ internal class BucketConfig(minFeeRate: Double) {
 @InternalAugurApi
 internal object BucketCreator {
   /**
-   * Maximum bucket index.
-   */
-  const val BUCKET_MAX = 1000
-
-  /**
-   * Converts a bucket index to the corresponding array position.
-   * Buckets are stored in reverse order so that the highest fee rate (BUCKET_MAX) is at index 0.
-   */
-  fun toArrayIndex(bucket: Int): Int = BUCKET_MAX - bucket
-
-  /**
-   * Converts an array position back to the original bucket index.
-   */
-  fun toBucketIndex(arrayIndex: Int): Int = BUCKET_MAX - arrayIndex
-
-  /**
    * Creates a bucket map from fee and weight pairs where the key is the bucket index
    * and the value is the sum of the weights at that fee rate, normalized to a one block duration.
    */
-  fun createFeeRateBuckets(feeRateWeightPairs: List<MempoolTransaction>): Map<Int, Long> =
+  fun createFeeRateBuckets(
+    feeRateWeightPairs: List<MempoolTransaction>,
+    bucketConfig: BucketConfig = BucketConfig.DEFAULT,
+  ): Map<Int, Long> =
     feeRateWeightPairs
-      .groupingBy { calculateBucketIndex(it.getFeeRate()) }
+      .groupingBy { calculateBucketIndex(it.getFeeRate(), bucketConfig) }
       .fold(0L) { acc, tx -> acc + tx.weight }
       .toSortedMap()
 
   /**
    * Calculates bucket index using logarithms, providing more precision in the lower fee levels.
    */
-  private fun calculateBucketIndex(feeRate: Double): Int = min(
+  private fun calculateBucketIndex(feeRate: Double, bucketConfig: BucketConfig): Int = min(
     (round(ln(feeRate) * 100).toInt()),
-    BUCKET_MAX,
+    bucketConfig.bucketMax,
   )
 }

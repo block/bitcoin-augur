@@ -19,12 +19,12 @@ package xyz.block.augur.internal
 import org.jetbrains.bio.viktor.F64Array
 import org.junit.jupiter.api.Test
 import xyz.block.augur.MempoolSnapshot
-import xyz.block.augur.internal.BucketCreator.BUCKET_MAX
 import java.time.Instant
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -64,7 +64,7 @@ class FeeEstimatesCalculatorTest {
   @Test
   fun `test findBestIndex when no weights are fully mined`() {
     val weights = F64Array(5) { 1000.0 }
-    assertEquals(BUCKET_MAX + 1, calculator.findBestIndex(weights))
+    assertEquals(defaultConfig.bucketMax + 1, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -76,8 +76,8 @@ class FeeEstimatesCalculatorTest {
     weights[3] = 1000.0 // unmined
     weights[4] = 1000.0 // unmined
 
-    // Should return BUCKET_MAX - 1 since index 1 is the last fully mined bucket
-    assertEquals(BUCKET_MAX - 1, calculator.findBestIndex(weights))
+    // Should return defaultConfig.bucketMax - 1 since index 1 is the last fully mined bucket
+    assertEquals(defaultConfig.bucketMax - 1, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -95,7 +95,7 @@ class FeeEstimatesCalculatorTest {
       )
 
     // With these parameters, we expect some buckets to be fully mined
-    assert(result != null && result < BUCKET_MAX)
+    assert(result != null && result < defaultConfig.bucketMax)
   }
 
   @Test
@@ -154,7 +154,7 @@ class FeeEstimatesCalculatorTest {
     weights[3] = 1000.0
     weights[4] = 1000.0
 
-    assertEquals(BUCKET_MAX, calculator.findBestIndex(weights))
+    assertEquals(defaultConfig.bucketMax, calculator.findBestIndex(weights))
   }
 
   @Test
@@ -193,7 +193,7 @@ class FeeEstimatesCalculatorTest {
     // Add weights: [4, 8, 12, 12, 12]
     // After second block: [0, 0, 12, 12, 12]
     // Last fully mined bucket is index 1
-    assertEquals(BUCKET_MAX - 1, result)
+    assertEquals(defaultConfig.bucketMax - 1, result)
   }
 
   @Test
@@ -268,7 +268,7 @@ class FeeEstimatesCalculatorTest {
         blockSize = 1.0,
       )
 
-    assertEquals(BUCKET_MAX + 1, result) // Index > BUCKET_MAX, indicating no estimate
+    assertEquals(defaultConfig.bucketMax + 1, result) // Index > defaultConfig.bucketMax, indicating no estimate
   }
 
   @Test
@@ -311,5 +311,28 @@ class FeeEstimatesCalculatorTest {
     val result = calculator.getWeightedEstimates(shortEstimates, longEstimates)
 
     assertEquals(expectedWeightedEstimates, result)
+  }
+
+  @Test
+  fun `test getFeeEstimates includes estimate exactly at bucketMax fee rate`() {
+    // Create a config with a low maxFeeRate so we can easily hit the boundary
+    val config = BucketConfig(maxFeeRate = 10.0) // bucketMax = floor(ln(10)*100) = 230
+    val calc = FeeEstimatesCalculator(probabilities, blockTargets, config)
+
+    // Put all weight in a single bucket at bucketMax — after mining, the estimate
+    // should land exactly at exp(bucketMax/100) which must NOT be null
+    val weights = F64Array(config.arraySize) { 0.0 }
+    weights[0] = 4_000_000.0 // highest bucket (bucketMax)
+
+    val zeroInflows = F64Array(config.arraySize) { 0.0 }
+    val estimates = calc.getFeeEstimates(weights, zeroInflows, zeroInflows.copy())
+
+    // The estimate for the highest bucket should be exp(230/100) ≈ 9.97
+    // which is <= maxFeeRate (10.0), so it must be non-null
+    estimates.forEach { row ->
+      row.forEach { fee ->
+        assertNotNull(fee, "Estimate at bucketMax fee rate should not be null")
+      }
+    }
   }
 }

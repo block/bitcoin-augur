@@ -90,7 +90,11 @@ val customFeeEstimator = FeeEstimator(
 
     // Minimum fee rate in sat/vB (default: 1.0)
     // Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates
-    minFeeRate = 0.1
+    minFeeRate = 0.1,
+
+    // Maximum fee rate in sat/vB (default: 22026.0)
+    // Estimates above this rate are returned as null
+    maxFeeRate = 1000.0
 )
 ```
 
