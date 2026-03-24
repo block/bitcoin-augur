@@ -23,7 +23,6 @@ import java.time.Instant
 import kotlin.random.Random
 
 object TestUtils {
-  @Suppress("DEPRECATION")
   fun createSnapshot(
     blockHeight: Int,
     timestamp: Instant = Instant.now(),

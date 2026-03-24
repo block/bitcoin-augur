@@ -17,8 +17,6 @@
 package xyz.block.augur
 
 import xyz.block.augur.internal.BucketCreator
-import xyz.block.augur.internal.BucketLayout
-import xyz.block.augur.internal.InternalAugurApi
 import java.time.Instant
 
 /**
@@ -29,8 +27,8 @@ import java.time.Instant
  *
  * Example usage:
  * ```
- * // Create from raw mempool transactions via the estimator
- * val snapshot = feeEstimator.createSnapshot(
+ * // Create from raw mempool transactions
+ * val snapshot = MempoolSnapshot.fromMempoolTransactions(
  *     transactions = mempoolTransactions,
  *     blockHeight = currentBlockHeight
  * )
@@ -57,32 +55,12 @@ public data class MempoolSnapshot(
      * @param timestamp When the snapshot is taken (defaults to now)
      * @return A new [MempoolSnapshot] instance
      */
-    @Deprecated(
-      message = "Prefer FeeEstimator.createSnapshot() for consistency, though the snapshot itself is layout-agnostic.",
-    )
-    @OptIn(InternalAugurApi::class)
     public fun fromMempoolTransactions(
       transactions: List<MempoolTransaction>,
       blockHeight: Int,
       timestamp: Instant = Instant.now(),
     ): MempoolSnapshot {
       val bucketedWeights = BucketCreator.createFeeRateBuckets(transactions)
-
-      return MempoolSnapshot(
-        blockHeight = blockHeight,
-        timestamp = timestamp,
-        bucketedWeights = bucketedWeights,
-      )
-    }
-
-    @OptIn(InternalAugurApi::class)
-    internal fun fromMempoolTransactions(
-      transactions: List<MempoolTransaction>,
-      blockHeight: Int,
-      timestamp: Instant = Instant.now(),
-      bucketLayout: BucketLayout,
-    ): MempoolSnapshot {
-      val bucketedWeights = BucketCreator.createFeeRateBuckets(transactions, bucketLayout)
 
       return MempoolSnapshot(
         blockHeight = blockHeight,

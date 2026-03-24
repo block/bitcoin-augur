@@ -35,7 +35,6 @@ import kotlin.math.round
  * @property bucketMax Fixed simulation upper bound (1000)
  * @property arraySize Total number of bucket array slots (bucketMax - bucketMin + 1)
  */
-@InternalAugurApi
 internal class BucketLayout(
   minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
 ) {
@@ -79,7 +78,6 @@ internal class BucketLayout(
 /**
  * Utility functions for creating buckets from fee and weight data.
  */
-@InternalAugurApi
 internal object BucketCreator {
   /**
    * Creates a bucket map from fee and weight pairs where the key is the bucket index
@@ -87,28 +85,27 @@ internal object BucketCreator {
    */
   fun createFeeRateBuckets(
     feeRateWeightPairs: List<MempoolTransaction>,
-    bucketLayout: BucketLayout = BucketLayout.DEFAULT,
   ): Map<Int, Long> =
     feeRateWeightPairs
-      .groupingBy { calculateBucketIndex(it.getFeeRate(), bucketLayout) }
+      .groupingBy { calculateBucketIndex(it.getFeeRate()) }
       .fold(0L) { acc, tx -> acc + tx.weight }
       .toSortedMap()
 
   /**
    * Calculates bucket index using logarithms, providing more precision in the lower fee levels.
    *
-   * Above-max fee rates are clamped to [BucketLayout.bucketMax] (the fixed simulation ceiling)
-   * so their block weight is preserved in the highest bucket. Below-min fee rates are intentionally
-   * NOT clamped here; they produce indices below [BucketLayout.bucketMin] and are dropped by
-   * [MempoolSnapshotF64Array.fromMempoolSnapshot], since sub-relay-minimum transactions
+   * Above-max fee rates are clamped to [BucketLayout.SIMULATION_BUCKET_MAX] (the fixed simulation
+   * ceiling) so their block weight is preserved in the highest bucket. Below-min fee rates are
+   * intentionally NOT clamped here; they produce indices below [BucketLayout.bucketMin] and are
+   * dropped by [MempoolSnapshotF64Array.fromMempoolSnapshot], since sub-relay-minimum transactions
    * should not influence fee estimates.
    */
-  private fun calculateBucketIndex(feeRate: Double, bucketLayout: BucketLayout): Int = min(
+  private fun calculateBucketIndex(feeRate: Double): Int = min(
     // round() is correct here: each transaction maps to its nearest bucket.
     // BucketLayout uses ceil for the lower *boundary* to guarantee the range stays within the
     // user's configured min fee rate, but individual transactions should snap to the
     // closest discrete bucket rather than being biased up or down.
     (round(ln(feeRate) * 100).toInt()),
-    bucketLayout.bucketMax,
+    BucketLayout.SIMULATION_BUCKET_MAX,
   )
 }

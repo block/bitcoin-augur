@@ -23,7 +23,6 @@ import java.time.Instant
 /**
  * Internal representation of mempool snapshot using F64Array for efficient calculations.
  */
-@InternalAugurApi
 internal data class MempoolSnapshotF64Array(
   val timestamp: Instant,
   val blockHeight: Int,

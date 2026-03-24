@@ -25,7 +25,6 @@ import java.time.Duration
  * This is used to simulate new transactions entering the mempool
  * during the time period being estimated.
  */
-@InternalAugurApi
 internal object InflowCalculator {
   /**
    * Calculates inflow rates based on historical snapshots.

@@ -19,7 +19,6 @@ package xyz.block.augur
 import xyz.block.augur.internal.BucketLayout
 import xyz.block.augur.internal.FeeEstimatesCalculator
 import xyz.block.augur.internal.InflowCalculator
-import xyz.block.augur.internal.InternalAugurApi
 import xyz.block.augur.internal.MempoolSnapshotF64Array
 import java.time.Duration
 import java.time.Instant
@@ -57,7 +56,6 @@ import java.time.Instant
  *   Fee estimates whose fee rate exceeds this bound are returned as null. This is an output filter
  *   only — the internal simulation always models the full fee rate space regardless of this value.
  */
-@OptIn(InternalAugurApi::class)
 public class FeeEstimator @JvmOverloads public constructor(
   private val probabilities: List<Double> = DEFAULT_PROBABILITIES,
   private val blockTargets: List<Double> = DEFAULT_BLOCK_TARGETS,
@@ -74,10 +72,6 @@ public class FeeEstimator @JvmOverloads public constructor(
     require(blockTargets.isNotEmpty()) { "At least one block target must be provided" }
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
-    require(minFeeRate > 0.0) { "minFeeRate must be positive, was $minFeeRate" }
-    require(minFeeRate <= MAX_SIMULATABLE_FEE_RATE) {
-      "minFeeRate must be at most $MAX_SIMULATABLE_FEE_RATE sat/vB, was $minFeeRate"
-    }
     require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
     bucketLayout = BucketLayout(minFeeRate)
     feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketLayout, maxFeeRate)
@@ -127,30 +121,6 @@ public class FeeEstimator @JvmOverloads public constructor(
     )
     return convertToFeeEstimate(feeMatrix, orderedSnapshots.last().timestamp, targets)
   }
-
-  /**
-   * Creates a [MempoolSnapshot] from raw transactions.
-   *
-   * This is a convenience that delegates to [MempoolSnapshot.fromMempoolTransactions]. The
-   * snapshot itself is layout-agnostic — it stores all bucketed transactions regardless of
-   * [minFeeRate]. The layout only matters later, when [calculateEstimates] converts the
-   * snapshot into the internal simulation array.
-   *
-   * @param transactions List of mempool transactions
-   * @param blockHeight Current block height
-   * @param timestamp When the snapshot is taken (defaults to now)
-   * @return A new [MempoolSnapshot] instance
-   */
-  public fun createSnapshot(
-    transactions: List<MempoolTransaction>,
-    blockHeight: Int,
-    timestamp: Instant = Instant.now(),
-  ): MempoolSnapshot = MempoolSnapshot.fromMempoolTransactions(
-    transactions = transactions,
-    blockHeight = blockHeight,
-    timestamp = timestamp,
-    bucketLayout = bucketLayout,
-  )
 
   /**
    * Creates a new [FeeEstimator] with modified settings.
@@ -221,7 +191,6 @@ public class FeeEstimator @JvmOverloads public constructor(
     /**
      * Default minimum fee rate in sat/vB. Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes.
      */
-    @OptIn(InternalAugurApi::class)
     public val DEFAULT_MIN_FEE_RATE: Double = BucketLayout.DEFAULT_MIN_FEE_RATE
 
     /**
@@ -229,14 +198,6 @@ public class FeeEstimator @JvmOverloads public constructor(
      * returned as null. Rounded up from exp(10) ≈ 22026.47 so that estimates at the
      * simulation ceiling (bucket 1000) pass the filter.
      */
-    @OptIn(InternalAugurApi::class)
     public val DEFAULT_MAX_FEE_RATE: Double = FeeEstimatesCalculator.DEFAULT_MAX_FEE_RATE
-
-    /**
-     * Maximum fee rate the simulation can represent, exp(10) ≈ 22026.47 sat/vB.
-     * Used to validate [minFeeRate] — values above this have no simulatable buckets.
-     */
-    @OptIn(InternalAugurApi::class)
-    private val MAX_SIMULATABLE_FEE_RATE: Double = kotlin.math.exp(BucketLayout.SIMULATION_BUCKET_MAX.toDouble() / 100)
   }
 }

@@ -28,7 +28,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-@OptIn(InternalAugurApi::class)
 class FeeEstimatesCalculatorTest {
   private val blockTargets = listOf(3.0, 12.0, 144.0)
   private val probabilities = listOf(0.5, 0.95)
@@ -365,6 +364,30 @@ class FeeEstimatesCalculatorTest {
     estimates.forEach { row ->
       row.forEach { fee ->
         assertNotNull(fee, "Estimate at or below maxFeeRate should not be null")
+      }
+    }
+  }
+
+  @Test
+  fun `test getFeeEstimates includes estimate exactly equal to maxFeeRate`() {
+    // Put all weight in a single bucket so the simulation produces a known fee rate.
+    // Bucket 0 corresponds to exp(0/100) = 1.0 sat/vB exactly.
+    val bucketIndex = 0
+    val exactFeeRate = kotlin.math.exp(bucketIndex.toDouble() / 100) // 1.0
+
+    val calc = FeeEstimatesCalculator(probabilities, blockTargets, BucketLayout.DEFAULT, maxFeeRate = exactFeeRate)
+
+    val weights = F64Array(defaultLayout.arraySize) { 0.0 }
+    weights[defaultLayout.toArrayIndex(bucketIndex)] = 4_000_000.0
+
+    val zeroInflows = F64Array(defaultLayout.arraySize) { 0.0 }
+    val estimates = calc.getFeeEstimates(weights, zeroInflows, zeroInflows.copy())
+
+    // The estimate equals maxFeeRate exactly — the <= filter should preserve it, not null it out
+    estimates.forEach { row ->
+      row.forEach { fee ->
+        assertNotNull(fee, "Estimate exactly equal to maxFeeRate ($exactFeeRate) should not be null")
+        assertEquals(exactFeeRate, fee, "Estimate should be exactly $exactFeeRate")
       }
     }
   }

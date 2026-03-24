@@ -24,7 +24,6 @@ import kotlin.math.roundToInt
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-@OptIn(InternalAugurApi::class)
 class MempoolSnapshotF64ArrayTest {
   private val defaultLayout = BucketLayout.DEFAULT
 

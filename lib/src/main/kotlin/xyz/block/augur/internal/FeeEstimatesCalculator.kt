@@ -28,7 +28,6 @@ import kotlin.math.pow
  * This class simulates the mining of blocks to predict when transactions
  * with different fee rates would be confirmed.
  */
-@InternalAugurApi
 internal class FeeEstimatesCalculator(
   private val probabilities: List<Double>,
   private val blockTargets: List<Double>,

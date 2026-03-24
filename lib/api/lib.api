@@ -44,8 +44,6 @@ public final class xyz/block/augur/FeeEstimator {
 	public static synthetic fun calculateEstimates$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/lang/Double;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimate;
 	public final fun configure (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;Ljava/lang/Double;Ljava/lang/Double;)Lxyz/block/augur/FeeEstimator;
 	public static synthetic fun configure$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;Ljava/lang/Double;Ljava/lang/Double;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimator;
-	public final fun createSnapshot (Ljava/util/List;ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
-	public static synthetic fun createSnapshot$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;ILjava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
 }
 
 public final class xyz/block/augur/FeeEstimator$Companion {
@@ -95,8 +93,5 @@ public final class xyz/block/augur/MempoolTransaction {
 }
 
 public final class xyz/block/augur/MempoolTransaction$Companion {
-}
-
-public abstract interface annotation class xyz/block/augur/internal/InternalAugurApi : java/lang/annotation/Annotation {
 }
 

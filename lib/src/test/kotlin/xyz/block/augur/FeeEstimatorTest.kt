@@ -344,7 +344,7 @@ class FeeEstimatorTest {
     val error = assertFailsWith<IllegalArgumentException> {
       FeeEstimator(minFeeRate = 30000.0)
     }
-    assertTrue(error.message!!.contains("at most"), "Error should mention the upper bound, was: ${error.message}")
+    assertTrue(error.message!!.contains("too high"), "Error should mention the upper bound, was: ${error.message}")
   }
 
   @Test
@@ -427,7 +427,6 @@ class FeeEstimatorTest {
     }
   }
 
-  @Suppress("DEPRECATION")
   @Test
   fun `test maxFeeRate is output filter only and does not affect snapshot bucketing`() {
     val highFeeTx = MempoolTransaction(weight = 400, fee = 5_000_000) // 50000 sat/vB

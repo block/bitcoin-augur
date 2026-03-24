@@ -21,7 +21,7 @@ It analyzes mempool snapshots to generate fee rate estimates for different confi
 val feeEstimator = FeeEstimator()
 
 // Create a mempool snapshot from current transactions
-val mempoolSnapshot = feeEstimator.createSnapshot(
+val mempoolSnapshot = MempoolSnapshot.fromMempoolTransactions(
     transactions = currentMempoolTransactions.map {
         MempoolTransaction(
             weight = it.weight.toLong(),

@@ -22,7 +22,6 @@ import java.time.Duration
 import java.time.Instant
 import kotlin.test.assertEquals
 
-@OptIn(InternalAugurApi::class)
 class InflowCalculatorTest {
   @Test
   fun `test calculateInflows with empty snapshot list`() {
