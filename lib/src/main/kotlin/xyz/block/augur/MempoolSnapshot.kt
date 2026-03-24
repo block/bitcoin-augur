@@ -16,6 +16,7 @@
 
 package xyz.block.augur
 
+import xyz.block.augur.internal.BucketConfig
 import xyz.block.augur.internal.BucketCreator
 import xyz.block.augur.internal.InternalAugurApi
 import java.time.Instant
@@ -54,15 +55,24 @@ public data class MempoolSnapshot(
      * @param transactions List of mempool transactions
      * @param blockHeight Current block height
      * @param timestamp When the snapshot is taken (defaults to now)
+     * @param minFeeRate Minimum fee rate in sat/vB for bucketing (default: 1.0).
+     *   Should match the [FeeEstimator]'s minFeeRate.
+     * @param maxFeeRate Maximum fee rate in sat/vB for bucketing (default: 22027.0).
+     *   Should match the [FeeEstimator]'s maxFeeRate.
      * @return A new [MempoolSnapshot] instance
      */
     @OptIn(InternalAugurApi::class)
+    @JvmOverloads
+    @JvmStatic
     public fun fromMempoolTransactions(
       transactions: List<MempoolTransaction>,
       blockHeight: Int,
       timestamp: Instant = Instant.now(),
+      minFeeRate: Double = FeeEstimator.DEFAULT_MIN_FEE_RATE,
+      maxFeeRate: Double = FeeEstimator.DEFAULT_MAX_FEE_RATE,
     ): MempoolSnapshot {
-      val bucketedWeights = BucketCreator.createFeeRateBuckets(transactions)
+      val bucketConfig = BucketConfig(minFeeRate, maxFeeRate)
+      val bucketedWeights = BucketCreator.createFeeRateBuckets(transactions, bucketConfig)
 
       return MempoolSnapshot(
         blockHeight = blockHeight,

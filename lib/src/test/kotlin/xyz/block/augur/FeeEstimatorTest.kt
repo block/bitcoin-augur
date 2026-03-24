@@ -412,6 +412,42 @@ class FeeEstimatorTest {
   }
 
   @Test
+  fun `test fromMempoolTransactions respects custom maxFeeRate`() {
+    val highFeeRate = 50000.0
+    val estimator = FeeEstimator(maxFeeRate = highFeeRate)
+
+    // Create a transaction with a very high fee rate that exceeds the default max
+    val highFeeTx = MempoolTransaction(weight = 400, fee = 5_000_000) // 50000 sat/vB
+
+    // Using custom maxFeeRate should place this in a bucket above the default max
+    val snapshotCustom = MempoolSnapshot.fromMempoolTransactions(
+      transactions = listOf(highFeeTx),
+      blockHeight = 1,
+      maxFeeRate = highFeeRate,
+    )
+
+    // Using default maxFeeRate should clamp this to the default bucket max
+    val snapshotDefault = MempoolSnapshot.fromMempoolTransactions(
+      transactions = listOf(highFeeTx),
+      blockHeight = 1,
+    )
+
+    // The custom snapshot should have a higher bucket index than the default
+    val maxBucketCustom = snapshotCustom.bucketedWeights.keys.max()
+    val maxBucketDefault = snapshotDefault.bucketedWeights.keys.max()
+    assert(maxBucketCustom > maxBucketDefault) {
+      "Custom maxFeeRate snapshot should have higher bucket index ($maxBucketCustom) than default ($maxBucketDefault)"
+    }
+  }
+
+  @Test
+  fun `test constructor throws if fee rates produce empty bucket range`() {
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(minFeeRate = 1.001, maxFeeRate = 1.002)
+    }
+  }
+
+  @Test
   fun `test configure can update minFeeRate and maxFeeRate`() {
     val estimator = FeeEstimator()
     val reconfigured = estimator.configure(minFeeRate = 0.1, maxFeeRate = 100.0)

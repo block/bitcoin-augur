@@ -32,16 +32,20 @@ public final class xyz/block/augur/FeeEstimate {
 
 public final class xyz/block/augur/FeeEstimator {
 	public static final field Companion Lxyz/block/augur/FeeEstimator$Companion;
+	public static final field DEFAULT_MAX_FEE_RATE D
+	public static final field DEFAULT_MIN_FEE_RATE D
 	public fun <init> ()V
 	public fun <init> (Ljava/util/List;)V
 	public fun <init> (Ljava/util/List;Ljava/util/List;)V
 	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;)V
 	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;)V
-	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;D)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;DD)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;DDILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun calculateEstimates (Ljava/util/List;Ljava/lang/Double;)Lxyz/block/augur/FeeEstimate;
 	public static synthetic fun calculateEstimates$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/lang/Double;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimate;
-	public final fun configure (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;)Lxyz/block/augur/FeeEstimator;
-	public static synthetic fun configure$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimator;
+	public final fun configure (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;Ljava/lang/Double;Ljava/lang/Double;)Lxyz/block/augur/FeeEstimator;
+	public static synthetic fun configure$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;Ljava/lang/Double;Ljava/lang/Double;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimator;
 }
 
 public final class xyz/block/augur/FeeEstimator$Companion {
@@ -58,6 +62,10 @@ public final class xyz/block/augur/MempoolSnapshot {
 	public final fun copy (ILjava/time/Instant;Ljava/util/Map;)Lxyz/block/augur/MempoolSnapshot;
 	public static synthetic fun copy$default (Lxyz/block/augur/MempoolSnapshot;ILjava/time/Instant;Ljava/util/Map;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
 	public fun equals (Ljava/lang/Object;)Z
+	public static final fun fromMempoolTransactions (Ljava/util/List;I)Lxyz/block/augur/MempoolSnapshot;
+	public static final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
+	public static final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;D)Lxyz/block/augur/MempoolSnapshot;
+	public static final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;DD)Lxyz/block/augur/MempoolSnapshot;
 	public final fun getBlockHeight ()I
 	public final fun getBucketedWeights ()Ljava/util/Map;
 	public final fun getTimestamp ()Ljava/time/Instant;
@@ -68,8 +76,11 @@ public final class xyz/block/augur/MempoolSnapshot {
 public final class xyz/block/augur/MempoolSnapshot$Companion {
 	public final fun empty (ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
 	public static synthetic fun empty$default (Lxyz/block/augur/MempoolSnapshot$Companion;ILjava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
+	public final fun fromMempoolTransactions (Ljava/util/List;I)Lxyz/block/augur/MempoolSnapshot;
 	public final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
-	public static synthetic fun fromMempoolTransactions$default (Lxyz/block/augur/MempoolSnapshot$Companion;Ljava/util/List;ILjava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
+	public final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;D)Lxyz/block/augur/MempoolSnapshot;
+	public final fun fromMempoolTransactions (Ljava/util/List;ILjava/time/Instant;DD)Lxyz/block/augur/MempoolSnapshot;
+	public static synthetic fun fromMempoolTransactions$default (Lxyz/block/augur/MempoolSnapshot$Companion;Ljava/util/List;ILjava/time/Instant;DDILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
 }
 
 public final class xyz/block/augur/MempoolTransaction {

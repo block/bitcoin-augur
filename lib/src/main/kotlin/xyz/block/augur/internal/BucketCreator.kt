@@ -42,6 +42,14 @@ internal class BucketConfig(
   val bucketMax: Int = floor(ln(maxFeeRate) * 100).toInt()
   val arraySize: Int = bucketMax - bucketMin + 1
 
+  init {
+    require(arraySize >= 1) {
+      "minFeeRate ($minFeeRate) and maxFeeRate ($maxFeeRate) are too close together: " +
+        "discretized bucket range is empty (bucketMin=$bucketMin, bucketMax=$bucketMax). " +
+        "Widen the gap between minFeeRate and maxFeeRate."
+    }
+  }
+
   /**
    * Converts a bucket index (bucketMin..bucketMax) to the corresponding array position.
    * Buckets are stored in reverse order so that the highest fee rate (bucketMax) is at index 0.

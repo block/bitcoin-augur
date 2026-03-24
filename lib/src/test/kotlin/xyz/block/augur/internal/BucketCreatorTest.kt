@@ -22,6 +22,7 @@ import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 @OptIn(InternalAugurApi::class)
@@ -171,6 +172,21 @@ class BucketCreatorTest {
     val config500 = BucketConfig(maxFeeRate = 500.0)
     assertEquals(621, config500.bucketMax)
     assertTrue(exp(config500.bucketMax.toDouble() / 100) <= 500.0)
+  }
+
+  @Test
+  fun `test BucketConfig throws if discretized bucket range is empty`() {
+    // minFeeRate = 1.001, maxFeeRate = 1.002: bucketMin = ceil(ln(1.001)*100) = 1, bucketMax = floor(ln(1.002)*100) = 0
+    assertFailsWith<IllegalArgumentException> {
+      BucketConfig(minFeeRate = 1.001, maxFeeRate = 1.002)
+    }
+  }
+
+  @Test
+  fun `test FeeEstimator throws if fee rates produce empty bucket range`() {
+    assertFailsWith<IllegalArgumentException> {
+      xyz.block.augur.FeeEstimator(minFeeRate = 1.001, maxFeeRate = 1.002)
+    }
   }
 
   @Test
