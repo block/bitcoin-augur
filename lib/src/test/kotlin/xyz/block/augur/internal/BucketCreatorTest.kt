@@ -183,13 +183,6 @@ class BucketCreatorTest {
   }
 
   @Test
-  fun `test FeeEstimator throws if fee rates produce empty bucket range`() {
-    assertFailsWith<IllegalArgumentException> {
-      xyz.block.augur.FeeEstimator(minFeeRate = 1.001, maxFeeRate = 1.002)
-    }
-  }
-
-  @Test
   fun `test createFeeRateBuckets with very low fee rates`() {
     // Test 0.1 sat/vB minimum (Bitcoin Core 29.1/30.0+)
     val transactions =

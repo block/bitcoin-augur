@@ -32,8 +32,6 @@ public final class xyz/block/augur/FeeEstimate {
 
 public final class xyz/block/augur/FeeEstimator {
 	public static final field Companion Lxyz/block/augur/FeeEstimator$Companion;
-	public static final field DEFAULT_MAX_FEE_RATE D
-	public static final field DEFAULT_MIN_FEE_RATE D
 	public fun <init> ()V
 	public fun <init> (Ljava/util/List;)V
 	public fun <init> (Ljava/util/List;Ljava/util/List;)V
@@ -46,10 +44,15 @@ public final class xyz/block/augur/FeeEstimator {
 	public static synthetic fun calculateEstimates$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/lang/Double;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimate;
 	public final fun configure (Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;Ljava/lang/Double;Ljava/lang/Double;)Lxyz/block/augur/FeeEstimator;
 	public static synthetic fun configure$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;Ljava/util/List;Ljava/time/Duration;Ljava/time/Duration;Ljava/lang/Double;Ljava/lang/Double;ILjava/lang/Object;)Lxyz/block/augur/FeeEstimator;
+	public final fun createSnapshot (Ljava/util/List;I)Lxyz/block/augur/MempoolSnapshot;
+	public final fun createSnapshot (Ljava/util/List;ILjava/time/Instant;)Lxyz/block/augur/MempoolSnapshot;
+	public static synthetic fun createSnapshot$default (Lxyz/block/augur/FeeEstimator;Ljava/util/List;ILjava/time/Instant;ILjava/lang/Object;)Lxyz/block/augur/MempoolSnapshot;
 }
 
 public final class xyz/block/augur/FeeEstimator$Companion {
 	public final fun getDEFAULT_BLOCK_TARGETS ()Ljava/util/List;
+	public final fun getDEFAULT_MAX_FEE_RATE ()D
+	public final fun getDEFAULT_MIN_FEE_RATE ()D
 	public final fun getDEFAULT_PROBABILITIES ()Ljava/util/List;
 }
 

@@ -43,6 +43,9 @@ internal class BucketConfig(
   val arraySize: Int = bucketMax - bucketMin + 1
 
   init {
+    require(minFeeRate > 0.0) { "minFeeRate must be positive, was $minFeeRate" }
+    require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
+    require(minFeeRate < maxFeeRate) { "minFeeRate ($minFeeRate) must be less than maxFeeRate ($maxFeeRate)" }
     require(arraySize >= 1) {
       "minFeeRate ($minFeeRate) and maxFeeRate ($maxFeeRate) are too close together: " +
         "discretized bucket range is empty (bucketMin=$bucketMin, bucketMax=$bucketMax). " +
@@ -89,6 +92,12 @@ internal object BucketCreator {
 
   /**
    * Calculates bucket index using logarithms, providing more precision in the lower fee levels.
+   *
+   * Above-max fee rates are clamped to [BucketConfig.bucketMax] so their block weight is
+   * preserved in the highest bucket. Below-min fee rates are intentionally NOT clamped here;
+   * they produce indices below [BucketConfig.bucketMin] and are dropped by
+   * [MempoolSnapshotF64Array.fromMempoolSnapshot], since sub-relay-minimum transactions
+   * should not influence fee estimates.
    */
   private fun calculateBucketIndex(feeRate: Double, bucketConfig: BucketConfig): Int = min(
     (round(ln(feeRate) * 100).toInt()),

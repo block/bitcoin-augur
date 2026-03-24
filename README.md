@@ -39,7 +39,8 @@ dependencies {
 val feeEstimator = FeeEstimator()
 
 // Create a mempool snapshot from current transactions
-val mempoolSnapshot = MempoolSnapshot.fromMempoolTransactions(
+// Using feeEstimator.createSnapshot ensures bucket boundaries match the estimator's config
+val mempoolSnapshot = feeEstimator.createSnapshot(
     transactions = currentMempoolTransactions.map {
         MempoolTransaction(
             weight = it.weight.toLong(),
@@ -92,7 +93,7 @@ val customFeeEstimator = FeeEstimator(
     // Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates
     minFeeRate = 0.1,
 
-    // Maximum fee rate in sat/vB (default: 22026.0)
+    // Maximum fee rate in sat/vB (default: 22027.0)
     // Estimates above this rate are returned as null
     maxFeeRate = 1000.0
 )

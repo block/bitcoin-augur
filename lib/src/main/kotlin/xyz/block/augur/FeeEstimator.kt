@@ -59,8 +59,8 @@ public class FeeEstimator @JvmOverloads public constructor(
   private val minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
   private val maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
 ) {
-  private val bucketConfig = BucketConfig(minFeeRate, maxFeeRate)
-  private val feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketConfig)
+  private val bucketConfig: BucketConfig
+  private val feeEstimatesCalculator: FeeEstimatesCalculator
 
   init {
     require(probabilities.isNotEmpty()) { "At least one probability level must be provided" }
@@ -70,6 +70,8 @@ public class FeeEstimator @JvmOverloads public constructor(
     require(minFeeRate > 0.0) { "minFeeRate must be positive" }
     require(maxFeeRate > 0.0) { "maxFeeRate must be positive" }
     require(minFeeRate < maxFeeRate) { "minFeeRate must be less than maxFeeRate" }
+    bucketConfig = BucketConfig(minFeeRate, maxFeeRate)
+    feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketConfig)
   }
 
   /**
@@ -116,6 +118,30 @@ public class FeeEstimator @JvmOverloads public constructor(
     )
     return convertToFeeEstimate(feeMatrix, orderedSnapshots.last().timestamp, targets)
   }
+
+  /**
+   * Creates a [MempoolSnapshot] from raw transactions using this estimator's fee rate bounds.
+   *
+   * Prefer this over [MempoolSnapshot.fromMempoolTransactions] to ensure the snapshot's bucket
+   * boundaries match this estimator's configuration.
+   *
+   * @param transactions List of mempool transactions
+   * @param blockHeight Current block height
+   * @param timestamp When the snapshot is taken (defaults to now)
+   * @return A new [MempoolSnapshot] instance
+   */
+  @JvmOverloads
+  public fun createSnapshot(
+    transactions: List<MempoolTransaction>,
+    blockHeight: Int,
+    timestamp: Instant = Instant.now(),
+  ): MempoolSnapshot = MempoolSnapshot.fromMempoolTransactions(
+    transactions = transactions,
+    blockHeight = blockHeight,
+    timestamp = timestamp,
+    minFeeRate = minFeeRate,
+    maxFeeRate = maxFeeRate,
+  )
 
   /**
    * Creates a new [FeeEstimator] with modified settings.
@@ -184,11 +210,13 @@ public class FeeEstimator @JvmOverloads public constructor(
     /**
      * Default minimum fee rate in sat/vB. Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes.
      */
-    public const val DEFAULT_MIN_FEE_RATE: Double = 1.0
+    @OptIn(InternalAugurApi::class)
+    public val DEFAULT_MIN_FEE_RATE: Double = BucketConfig.DEFAULT_MIN_FEE_RATE
 
     /**
      * Default maximum fee rate in sat/vB (~exp(10)). Fee estimates above this are returned as null.
      */
-    public const val DEFAULT_MAX_FEE_RATE: Double = 22027.0
+    @OptIn(InternalAugurApi::class)
+    public val DEFAULT_MAX_FEE_RATE: Double = BucketConfig.DEFAULT_MAX_FEE_RATE
   }
 }
