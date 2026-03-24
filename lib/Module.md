@@ -21,8 +21,8 @@ It analyzes mempool snapshots to generate fee rate estimates for different confi
 val feeEstimator = FeeEstimator()
 
 // Create a mempool snapshot from current transactions
-val mempoolSnapshot = MempoolSnapshot.fromMempoolTransactions(
-    transactions = currentMempoolTransactions.map { 
+val mempoolSnapshot = feeEstimator.createSnapshot(
+    transactions = currentMempoolTransactions.map {
         MempoolTransaction(
             weight = it.weight.toLong(),
             fee = it.baseFee // in satoshis

@@ -419,6 +419,7 @@ class FeeEstimatorTest {
     }
   }
 
+  @Suppress("DEPRECATION")
   @Test
   fun `test maxFeeRate is output filter only and does not affect snapshot bucketing`() {
     val highFeeTx = MempoolTransaction(weight = 400, fee = 5_000_000) // 50000 sat/vB

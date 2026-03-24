@@ -29,8 +29,8 @@ import java.time.Instant
  *
  * Example usage:
  * ```
- * // Create from raw mempool transactions
- * val snapshot = MempoolSnapshot.fromMempoolTransactions(
+ * // Create from raw mempool transactions via the estimator
+ * val snapshot = feeEstimator.createSnapshot(
  *     transactions = mempoolTransactions,
  *     blockHeight = currentBlockHeight
  * )
@@ -57,6 +57,10 @@ public data class MempoolSnapshot(
      * @param timestamp When the snapshot is taken (defaults to now)
      * @return A new [MempoolSnapshot] instance
      */
+    @Deprecated(
+      message = "Use FeeEstimator.createSnapshot() to ensure snapshot bucket layout matches the estimator's minFeeRate.",
+      replaceWith = ReplaceWith("feeEstimator.createSnapshot(transactions, blockHeight, timestamp)"),
+    )
     @OptIn(InternalAugurApi::class)
     public fun fromMempoolTransactions(
       transactions: List<MempoolTransaction>,

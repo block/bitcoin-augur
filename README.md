@@ -89,7 +89,10 @@ val customFeeEstimator = FeeEstimator(
     blockTargets = listOf(1.0, 2.0, 3.0, 6.0, 12.0, 24.0, 48.0, 72.0),
 
     // Minimum fee rate in sat/vB (default: 1.0)
-    // Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates
+    // Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates.
+    // Changing this value changes the snapshot bucket layout. Previously persisted snapshots
+    // are still usable but will have zero weight in the new low-fee buckets until the
+    // snapshot history fully rolls over (typically 24 hours).
     minFeeRate = 0.1,
 
     // Maximum fee rate in sat/vB for reporting (default: 22027.0)

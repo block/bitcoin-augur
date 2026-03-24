@@ -46,7 +46,11 @@ import java.time.Instant
  * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144)
  * @property minFeeRate The minimum fee rate in sat/vB to consider (default: 1.0). Set to 0.1 for
  *   Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates. Transactions whose fee rate
- *   rounds to a bucket below this threshold are excluded.
+ *   rounds to a bucket below this threshold are excluded. **Migration note:** changing `minFeeRate`
+ *   changes the snapshot bucket layout. Snapshots persisted under the old layout lack the new
+ *   low-fee buckets, so estimates over a mixed history (e.g. a 24 h window) will treat the old
+ *   snapshots as having zero weight in those buckets until the history fully rolls over. This is
+ *   safe but means sub-`minFeeRate` data only becomes complete after one full window duration.
  * @property maxFeeRate The maximum fee rate in sat/vB for reporting (default: 22027.0).
  *   Fee estimates whose fee rate exceeds this bound are returned as null. This is an output filter
  *   only — the internal simulation always models the full fee rate space regardless of this value.
@@ -68,6 +72,7 @@ public class FeeEstimator @JvmOverloads public constructor(
     require(blockTargets.isNotEmpty()) { "At least one block target must be provided" }
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
+    require(minFeeRate > 0.0) { "minFeeRate must be positive, was $minFeeRate" }
     require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
     bucketLayout = BucketLayout(minFeeRate)
     feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketLayout, maxFeeRate)
@@ -124,6 +129,11 @@ public class FeeEstimator @JvmOverloads public constructor(
    * Use this instead of [MempoolSnapshot.fromMempoolTransactions] when the estimator has a
    * custom [minFeeRate], to ensure the snapshot's bucket boundaries match this estimator's
    * configuration.
+   *
+   * When switching to a different [minFeeRate], all new snapshots should be created with this
+   * method. Previously persisted snapshots are still usable — they will simply have zero weight
+   * in any buckets outside their original layout — but estimates will only reflect the full fee
+   * rate range once the snapshot history has fully rolled over (typically 24 hours).
    *
    * @param transactions List of mempool transactions
    * @param blockHeight Current block height
@@ -215,7 +225,7 @@ public class FeeEstimator @JvmOverloads public constructor(
 
     /**
      * Default maximum fee rate in sat/vB for reporting. Estimates above this value are
-     * returned as null. Rounded up from exp(10) ≈ 22026.47 to preserve the legacy simulation bucket count.
+     * returned as null. Corresponds to exp(10) ≈ 22026.47, the fee rate at the simulation ceiling.
      */
     @OptIn(InternalAugurApi::class)
     public val DEFAULT_MAX_FEE_RATE: Double = FeeEstimatesCalculator.DEFAULT_MAX_FEE_RATE
