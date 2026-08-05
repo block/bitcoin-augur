@@ -72,6 +72,10 @@ public class FeeEstimator @JvmOverloads public constructor(
     require(blockTargets.isNotEmpty()) { "At least one block target must be provided" }
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
     require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
+    // Same cost bound as numOfBlocks below: a target of a million blocks simulates a million blocks.
+    require(blockTargets.all { it <= MAX_BLOCK_TARGET }) {
+      "All block targets must be at most $MAX_BLOCK_TARGET, was ${blockTargets.filter { it > MAX_BLOCK_TARGET }}"
+    }
     require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
     bucketLayout = BucketLayout(minFeeRate)
     feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketLayout, maxFeeRate)
@@ -93,6 +97,12 @@ public class FeeEstimator @JvmOverloads public constructor(
     // If numOfBlocks is specified then it needs to be at least 3,
     // since we can't simulate partial blocks being mined
     require(numOfBlocks == null || numOfBlocks >= 3.0) { "numOfBlocks must be at least 3 if specified" }
+    // It also needs an upper bound: getExpectedBlocksMined evaluates a Poisson tail of
+    // 4 * numOfBlocks entries and then simulates that many blocks, so an unbounded value costs
+    // minutes of CPU per call -- and callers behind an HTTP service pass a request parameter through.
+    require(numOfBlocks == null || numOfBlocks <= MAX_BLOCK_TARGET) {
+      "numOfBlocks must be at most $MAX_BLOCK_TARGET if specified, was $numOfBlocks"
+    }
 
     if (mempoolSnapshots.isEmpty()) {
       return FeeEstimate(emptyMap(), Instant.now())
@@ -199,5 +209,11 @@ public class FeeEstimator @JvmOverloads public constructor(
      * simulation ceiling (bucket 1000) pass the filter.
      */
     public val DEFAULT_MAX_FEE_RATE: Double = FeeEstimatesCalculator.DEFAULT_MAX_FEE_RATE
+
+    /**
+     * Largest supported block target, one week of blocks. Simulation cost grows linearly with the
+     * target, so this bound keeps a caller-supplied `numOfBlocks` from costing minutes of CPU.
+     */
+    public const val MAX_BLOCK_TARGET: Double = 1008.0
   }
 }

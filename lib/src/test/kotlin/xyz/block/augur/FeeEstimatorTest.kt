@@ -330,6 +330,34 @@ class FeeEstimatorTest {
   }
 
   @Test
+  fun `test calculateEstimates throws if numOfBlocks exceeds the maximum block target`() {
+    // Simulation cost grows with the target, so an unbounded value burns minutes of CPU in a single
+    // call -- and callers behind an HTTP service pass a request parameter straight through.
+    val snapshots = TestUtils.createSnapshotSequence(blockCount = 5, snapshotsPerBlock = 3)
+    assertFailsWith<IllegalArgumentException> {
+      feeEstimator.calculateEstimates(snapshots, numOfBlocks = 1_000_000.0)
+    }
+    assertFailsWith<IllegalArgumentException> {
+      feeEstimator.calculateEstimates(snapshots, numOfBlocks = FeeEstimator.MAX_BLOCK_TARGET + 1)
+    }
+    // The bound itself is still accepted.
+    feeEstimator.calculateEstimates(snapshots, numOfBlocks = FeeEstimator.MAX_BLOCK_TARGET)
+  }
+
+  @Test
+  fun `test constructor throws if a block target exceeds the maximum`() {
+    // blockTargets reaches the same simulation cost as numOfBlocks, so it needs the same bound.
+    assertFailsWith<IllegalArgumentException> {
+      FeeEstimator(blockTargets = listOf(3.0, 1_000_000.0))
+    }
+    assertFailsWith<IllegalArgumentException> {
+      feeEstimator.configure(blockTargets = listOf(FeeEstimator.MAX_BLOCK_TARGET + 1))
+    }
+    // The bound itself is still accepted.
+    FeeEstimator(blockTargets = listOf(FeeEstimator.MAX_BLOCK_TARGET))
+  }
+
+  @Test
   fun `test constructor throws if minFeeRate is zero or negative`() {
     assertFailsWith<IllegalArgumentException> {
       FeeEstimator(minFeeRate = 0.0)
