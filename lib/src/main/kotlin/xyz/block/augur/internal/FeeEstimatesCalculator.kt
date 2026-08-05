@@ -33,6 +33,7 @@ internal class FeeEstimatesCalculator(
   private val blockTargets: List<Double>,
   private val bucketLayout: BucketLayout = BucketLayout.DEFAULT,
   private val maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
+  private val longTermWindowBlocks: Double = DEFAULT_LONG_TERM_WINDOW_BLOCKS,
 ) {
   private val expectedBlocksMined by lazy { getExpectedBlocksMined() }
 
@@ -43,7 +44,8 @@ internal class FeeEstimatesCalculator(
    * @param shortIntervalInflows Short-term inflow data (typically 30 minutes)
    * @param longIntervalInflows Long-term inflow data (typically 24 hours)
    * @return A 2D array of fee estimates where each element corresponds to a specific
-   *         block target and probability level. Values exceeding [maxFeeRate] are null.
+   *         block target and probability level. An element is null when it exceeds [maxFeeRate],
+   *         or when no fee rate can satisfy that (block target, probability) pair at all.
    */
   fun getFeeEstimates(
     mempoolSnapshot: F64Array,
@@ -96,13 +98,16 @@ internal class FeeEstimatesCalculator(
       probabilities.indices.forEach { probIndex ->
         val expectedBlocks = expectedBlocksMined[blockTargetIndex, probIndex].toInt()
 
-        // Run individual simulation and store result
+        // Run individual simulation and store result. NaN marks "no fee rate satisfies this pair"
+        // and prepareResultArray turns it into null. Bucket 0 must never stand in for failure: it is
+        // a real fee rate (minFeeRate, 1 sat/vB by default), so a caller could not tell a genuine
+        // 1 sat/vB recommendation apart from a failed simulation.
         result[blockTargetIndex, probIndex] = runSimulation(
           initialWeights,
           addedWeights,
           expectedBlocks,
           meanBlocks,
-        )?.toDouble() ?: 0.0
+        )?.toDouble() ?: Double.NaN
       }
     }
 
@@ -111,7 +116,9 @@ internal class FeeEstimatesCalculator(
 
   /**
    * Simulates mining blocks and returns the weight index corresponding to the
-   * lowest fee rate that would result in the transaction getting mined.
+   * lowest fee rate that would result in the transaction getting mined, or null when no
+   * simulation is possible (no blocks are expected to be mined at this confidence level) or
+   * when even the highest fee rate bucket would not clear.
    */
   internal fun runSimulation(
     initialWeights: F64Array,
@@ -154,7 +161,10 @@ internal class FeeEstimatesCalculator(
     var weightUnitsRemaining = blockSize
 
     for (i in 0 until weightsRemaining.length) {
-      val removedWeight = min(weightsRemaining[i], weightUnitsRemaining)
+      // coerceAtLeast(0.0) stops a negative bucket weight from *adding* to the block's remaining
+      // capacity, which would otherwise let a single block mine more than blockSize weight units
+      // and make the whole mempool look clearable at the minimum fee rate.
+      val removedWeight = min(weightsRemaining[i], weightUnitsRemaining).coerceAtLeast(0.0)
       weightUnitsRemaining -= removedWeight
       weightsRemaining[i] -= removedWeight
     }
@@ -162,9 +172,9 @@ internal class FeeEstimatesCalculator(
   }
 
   /**
-   * Find the index of the last bucket that is fully mined.
+   * Find the index of the last bucket that is fully mined, or null if no bucket is.
    */
-  internal fun findBestIndex(weightsRemaining: F64Array): Int {
+  internal fun findBestIndex(weightsRemaining: F64Array): Int? {
     // The last mined bucket will occur just before the first non-zero remaining weight.
     val index = weightsRemaining.toDoubleArray().indexOfFirst { it != 0.0 } - 1
 
@@ -173,7 +183,7 @@ internal class FeeEstimatesCalculator(
     // Else, createFeeRateBuckets reversed the order, so subtract to recover the original index.
     return when (index) {
       -2 -> bucketLayout.bucketMin // all weights are zero so we can use the cheapest fee rate
-      -1 -> bucketLayout.bucketMax + 1 // return null
+      -1 -> null // not even the highest fee rate bucket cleared, so no answer exists
       else -> bucketLayout.toBucketIndex(index)
     }
   }
@@ -185,9 +195,13 @@ internal class FeeEstimatesCalculator(
     shortEstimates: F64Array,
     longEstimates: F64Array,
   ): F64Array {
-    // The longer estimates are weighted more heavily for longer intervals. For example, the
-    // weighted estimate for 24 hours (144 blocks) is exactly equal to the longEstimate.
-    val weights = blockTargets.map { 1 - (1 - it / 144.0).pow(2) }
+    // The longer estimates are weighted more heavily for longer intervals, reaching a pure
+    // long-term estimate at the long-term window (144 blocks for the default 24 hours).
+    //
+    // coerceAtMost(1.0) saturates the ramp past that point. Without it the parabola turns back down,
+    // returning to 0 at twice the window and reaching -35 at 1008 blocks, which extrapolates the two
+    // estimates apart instead of averaging them.
+    val weights = blockTargets.map { 1 - (1 - (it / longTermWindowBlocks).coerceAtMost(1.0)).pow(2) }
     val weightedEstimates = F64Array(shortEstimates.shape[0], shortEstimates.shape[1])
 
     for (i in 0 until weightedEstimates.shape[0]) {
@@ -203,13 +217,18 @@ internal class FeeEstimatesCalculator(
   internal fun convertBucketsToFeeRates(bucketEstimates: F64Array): F64Array = (bucketEstimates / 100.0).exp()
 
   /**
-   * Converts fee estimates to the final nullable array format and filters fees above the maximum bucket's fee rate.
+   * Converts fee estimates to the final nullable array format, dropping cells that no fee rate can
+   * satisfy along with any fee above [maxFeeRate].
    * F64Array can't accommodate nulls so we convert to traditional arrays.
    */
   private fun prepareResultArray(feeRates: F64Array): Array<Array<Double?>> {
     return Array(feeRates.shape[0]) { blockTargetIndex ->
       Array(feeRates.shape[1]) { probabilityIndex ->
-        feeRates[blockTargetIndex, probabilityIndex].takeIf { it <= maxFeeRate }
+        // isFinite() drops the NaN markers runSimulations writes for unanswerable cells, and stays
+        // independent of maxFeeRate. The old out-of-band bucket sentinel did not: it relied on the
+        // gap between exp(1001/100) and DEFAULT_MAX_FEE_RATE, so raising maxFeeRate surfaced
+        // 22247.84 sat/vB as a real estimate.
+        feeRates[blockTargetIndex, probabilityIndex].takeIf { it.isFinite() && it <= maxFeeRate }
       }
     }
   }
@@ -241,12 +260,18 @@ internal class FeeEstimatesCalculator(
    * Ensures that fee rates decrease (or stay the same) as block targets increase.
    * For each probability, if a fee rate is higher than the previous one,
    * it is set equal to the previous rate.
+   *
+   * Assumes [blockTargets] is in ascending order; [xyz.block.augur.FeeEstimator] sorts it.
    */
   internal fun enforceMonotonicity(feeRates: F64Array): F64Array {
     val result = feeRates.copy()
     for (j in 0 until result.shape[1]) {
       var prevRate = Double.POSITIVE_INFINITY
       for (i in 0 until result.shape[0]) {
+        // Skip unavailable cells, and in particular don't let one become the running bound: a
+        // single unanswerable short target would otherwise clamp every longer target in the
+        // column down to it, discarding estimates that were computed correctly.
+        if (result[i, j].isNaN()) continue
         if (result[i, j] > prevRate) {
           result[i, j] = prevRate
         }
@@ -258,6 +283,12 @@ internal class FeeEstimatesCalculator(
 
   companion object {
     const val BLOCK_SIZE_WEIGHT_UNITS = 4_000_000
+
+    /** Bitcoin's target block interval, used to convert window durations into block counts. */
+    const val MINUTES_PER_BLOCK = 10.0
+
+    /** Blocks in the default 24 hour long-term window: 24 * 60 / 10. */
+    const val DEFAULT_LONG_TERM_WINDOW_BLOCKS = 144.0
 
     // Rounded up from exp(10) ≈ 22026.47 so estimates at the simulation ceiling pass the <= filter
     const val DEFAULT_MAX_FEE_RATE = 22027.0

@@ -69,6 +69,8 @@ public data class FeeEstimate(
    *
    * This is useful when the exact requested block target is not available.
    *
+   * Ties are broken toward the smaller target, which carries a fee rate at least as high.
+   *
    * @param targetBlocks The desired confirmation target in blocks
    * @return The nearest available block target, or null if no estimates are available
    */
@@ -76,8 +78,12 @@ public data class FeeEstimate(
     if (estimates.isEmpty()) return null
     if (estimates.containsKey(targetBlocks)) return targetBlocks
 
-    return estimates.keys
-      .minByOrNull { kotlin.math.abs(it - targetBlocks) }
+    // Comparing in Long avoids overflow on extreme inputs, and the second comparator makes the
+    // result independent of map iteration order -- previously an exact tie returned whichever key
+    // the map happened to yield first.
+    return estimates.keys.minWithOrNull(
+      compareBy({ kotlin.math.abs(it.toLong() - targetBlocks) }, { it }),
+    )
   }
 
   /**

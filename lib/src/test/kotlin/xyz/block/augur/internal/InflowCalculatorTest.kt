@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test
 import java.time.Duration
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class InflowCalculatorTest {
   @Test
@@ -183,5 +184,54 @@ class InflowCalculatorTest {
     // Total: +2000 over 400s = +3000 per 600s (10 minutes)
     assertEquals(BucketLayout.DEFAULT.arraySize, inflows.length)
     assertEquals(3000.0, inflows[0])
+  }
+
+  @Test
+  fun `test calculateInflows returns zeros when every snapshot is at a distinct block height`() {
+    val now = Instant.now()
+
+    // One snapshot per height is the normal state for a per-block collector. Inflow is only
+    // observable between two snapshots at the same height, so the measured span is zero. Dividing by
+    // it produced Infinity, then 0.0 * Infinity = NaN in every bucket, and those NaNs propagated
+    // through the simulation until every cell of the fee table came back null.
+    val snapshots =
+      (0 until 3).map { i ->
+        MempoolSnapshotF64Array(
+          now.plusSeconds(600L * i),
+          100 + i,
+          F64Array(BucketLayout.DEFAULT.arraySize) { 1000.0 * (i + 1) },
+        )
+      }
+
+    val inflows =
+      InflowCalculator.calculateInflows(
+        mempoolSnapshots = snapshots,
+        timeframe = Duration.ofHours(24),
+      )
+
+    assertEquals(BucketLayout.DEFAULT.arraySize, inflows.length)
+    assertEquals(0.0, inflows.sum())
+    assertTrue(inflows.toDoubleArray().all { it.isFinite() }, "inflows must not contain NaN or Infinity")
+  }
+
+  @Test
+  fun `test calculateInflows normalizes sub-second spans`() {
+    val now = Instant.now()
+
+    // The span used to be measured in whole seconds, so snapshots less than a second apart truncated
+    // to a zero span and divided by zero. 500ms of +1000 is 1.2M per 10 minutes.
+    val snapshots =
+      listOf(
+        MempoolSnapshotF64Array(now, 100, F64Array(BucketLayout.DEFAULT.arraySize) { 1000.0 }),
+        MempoolSnapshotF64Array(now.plusMillis(500), 100, F64Array(BucketLayout.DEFAULT.arraySize) { 2000.0 }),
+      )
+
+    val inflows =
+      InflowCalculator.calculateInflows(
+        mempoolSnapshots = snapshots,
+        timeframe = Duration.ofMinutes(10),
+      )
+
+    assertEquals(1_200_000.0, inflows[0])
   }
 }
