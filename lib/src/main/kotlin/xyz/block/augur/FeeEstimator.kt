@@ -41,8 +41,11 @@ import java.time.Instant
  * val feeRate = estimate.getFeeRate(targetBlocks = 6, probability = 0.95)
  * ```
  *
- * @property probabilities The confidence levels to calculate (default: 5%, 20%, 50%, 80%, 95%)
- * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18, 24, 36, 48, 72, 96, 144)
+ * @property probabilities The confidence levels to calculate (default: 5%, 20%, 50%, 80%, 95%).
+ *   A level above `1 - exp(-blockTarget)` — the chance any block is found within the target, 0.9502
+ *   at 3 blocks — is unanswerable at any fee rate and estimates null for that cell.
+ * @property blockTargets The block confirmation targets to estimate for (default: 3, 6, 9, 12, 18,
+ *   24, 36, 48, 72, 96, 144). Sorted internally.
  * @property minFeeRate The minimum fee rate in sat/vB for the simulation lower bound (default: 1.0).
  *   Set to 0.1 for Bitcoin Core 29.1/30.0+ nodes that support sub-1 sat/vB fee rates. Snapshots
  *   store all bucketed transactions regardless of this value; `minFeeRate` controls which buckets
@@ -58,28 +61,41 @@ import java.time.Instant
  */
 public class FeeEstimator @JvmOverloads public constructor(
   private val probabilities: List<Double> = DEFAULT_PROBABILITIES,
-  private val blockTargets: List<Double> = DEFAULT_BLOCK_TARGETS,
+  blockTargets: List<Double> = DEFAULT_BLOCK_TARGETS,
   private val shortTermWindowDuration: Duration = Duration.ofMinutes(30),
   private val longTermWindowDuration: Duration = Duration.ofHours(24),
   private val minFeeRate: Double = DEFAULT_MIN_FEE_RATE,
   private val maxFeeRate: Double = DEFAULT_MAX_FEE_RATE,
 ) {
+  /**
+   * Sorted ascending. [FeeEstimatesCalculator.enforceMonotonicity] walks block targets in order, so
+   * an unsorted list used to clamp every short target down to the longest target's fee rate.
+   */
+  private val blockTargets: List<Double> = blockTargets.sorted()
+
+  /** The long-term window in blocks, where the short/long blend ramp reaches a pure long-term estimate. */
+  private val longTermWindowBlocks: Double =
+    longTermWindowDuration.toMillis() / (FeeEstimatesCalculator.MINUTES_PER_BLOCK * 60_000.0)
+
   private val bucketLayout: BucketLayout
   private val feeEstimatesCalculator: FeeEstimatesCalculator
 
   init {
     require(probabilities.isNotEmpty()) { "At least one probability level must be provided" }
-    require(blockTargets.isNotEmpty()) { "At least one block target must be provided" }
+    require(this.blockTargets.isNotEmpty()) { "At least one block target must be provided" }
     require(probabilities.all { it in 0.0..1.0 }) { "All probabilities must be between 0.0 and 1.0" }
-    require(blockTargets.all { it > 0 }) { "All block targets must be positive" }
+    require(this.blockTargets.all { it > 0 }) { "All block targets must be positive" }
     // Same cost bound as numOfBlocks below: a target of a million blocks simulates a million blocks.
-    require(blockTargets.all { it <= MAX_BLOCK_TARGET }) {
-      "All block targets must be at most $MAX_BLOCK_TARGET, was ${blockTargets.filter { it > MAX_BLOCK_TARGET }}"
+    require(this.blockTargets.all { it <= MAX_BLOCK_TARGET }) {
+      "All block targets must be at most $MAX_BLOCK_TARGET, was ${this.blockTargets.filter { it > MAX_BLOCK_TARGET }}"
     }
     require(maxFeeRate > 0.0) { "maxFeeRate must be positive, was $maxFeeRate" }
     bucketLayout = BucketLayout(minFeeRate)
-    feeEstimatesCalculator = FeeEstimatesCalculator(probabilities, blockTargets, bucketLayout, maxFeeRate)
+    feeEstimatesCalculator = newCalculator(this.blockTargets)
   }
+
+  private fun newCalculator(targets: List<Double>): FeeEstimatesCalculator =
+    FeeEstimatesCalculator(probabilities, targets, bucketLayout, maxFeeRate, longTermWindowBlocks)
 
   /**
    * Calculates fee estimates based on historical mempool snapshots.
@@ -112,13 +128,20 @@ public class FeeEstimator @JvmOverloads public constructor(
     val orderedSnapshots = mempoolSnapshots.sortedBy { it.timestamp }
     val simdSnapshots = orderedSnapshots.map { MempoolSnapshotF64Array.fromMempoolSnapshot(it, bucketLayout) }
 
+    // Inflow is only observable between two snapshots at the same block height, so without such a
+    // pair there is no estimate to make. Previously this divided by a zero span and returned a table
+    // of nulls instead of saying so.
+    if (simdSnapshots.groupingBy { it.blockHeight }.eachCount().none { it.value > 1 }) {
+      return FeeEstimate(emptyMap(), orderedSnapshots.last().timestamp)
+    }
+
     // Extract latest mempool weights and calculate inflow rates
     val latestMempoolWeights = simdSnapshots.last().buckets
     val shortTermInflows = InflowCalculator.calculateInflows(simdSnapshots, shortTermWindowDuration, bucketLayout)
     val longTermInflows = InflowCalculator.calculateInflows(simdSnapshots, longTermWindowDuration, bucketLayout)
 
     val (calculator, targets) = if (numOfBlocks != null) {
-      FeeEstimatesCalculator(probabilities, listOf(numOfBlocks), bucketLayout, maxFeeRate) to listOf(numOfBlocks)
+      newCalculator(listOf(numOfBlocks)) to listOf(numOfBlocks)
     } else {
       feeEstimatesCalculator to blockTargets
     }

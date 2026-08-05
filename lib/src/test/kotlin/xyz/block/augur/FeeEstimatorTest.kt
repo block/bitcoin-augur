@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test
 import xyz.block.augur.test.TestUtils
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.exp
+import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -93,9 +95,10 @@ class FeeEstimatorTest {
       FeeEstimator.DEFAULT_PROBABILITIES.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
         if (feeRate != null) {
-          assert(feeRate >= lastFeeRate) {
-            "Fee rates should increase with probability for target=$target"
-          }
+          assertTrue(
+            feeRate >= lastFeeRate,
+            "Fee rates should increase with probability for target=$target",
+          )
           lastFeeRate = feeRate
         }
       }
@@ -118,9 +121,10 @@ class FeeEstimatorTest {
       FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
         if (feeRate != null) {
-          assert(feeRate <= lastFeeRate) {
-            "Fee rates should decrease with target blocks for probability=$probability"
-          }
+          assertTrue(
+            feeRate <= lastFeeRate,
+            "Fee rates should decrease with target blocks for probability=$probability",
+          )
           lastFeeRate = feeRate
         }
       }
@@ -150,9 +154,10 @@ class FeeEstimatorTest {
       FeeEstimator.DEFAULT_BLOCK_TARGETS.forEach { target ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
         if (feeRate != null) {
-          assert(feeRate <= lastFeeRate) {
-            "Fee rates should decrease with target blocks for probability=$probability"
-          }
+          assertTrue(
+            feeRate <= lastFeeRate,
+            "Fee rates should decrease with target blocks for probability=$probability",
+          )
           lastFeeRate = feeRate
         }
       }
@@ -177,12 +182,24 @@ class FeeEstimatorTest {
 
     val estimate = customEstimator.calculateEstimates(snapshots)
 
-    // Verify that estimates exist only for custom probabilities and targets
+    // Verify that estimates exist only for custom probabilities and targets.
+    //
+    // A cell is answerable only up to the chance that at least one block is found within the target,
+    // 1 - exp(-target). For a 1 block target that ceiling is 0.632, so 90% confidence in 1 block is
+    // unanswerable at any fee rate and must report null. This test used to assert a fee rate existed
+    // there, and it passed because the calculator substituted the lowest bucket -- so "confirm in
+    // one block, 90% sure" answered 1 sat/vB.
     customTargets.forEach { target ->
       customProbabilities.forEach { probability ->
         val feeRate = estimate.getFeeRate(target.toInt(), probability)
-        assert(feeRate != null && feeRate > 0.0) {
-          "Fee rate should exist for custom target=$target, probability=$probability"
+        if (probability > 1 - exp(-target)) {
+          assertNull(feeRate, "No fee rate can give $probability confidence within $target block(s)")
+        } else {
+          assertNotNull(feeRate, "Fee rate should exist for custom target=$target, probability=$probability")
+          assertTrue(
+            feeRate > 0.0,
+            "Fee rate should be positive for custom target=$target, probability=$probability",
+          )
         }
       }
     }
@@ -197,7 +214,7 @@ class FeeEstimatorTest {
           startTime = startTime,
           blockCount = 5,
           snapshotsPerBlock = 3,
-        ).shuffled() // Randomize order
+        ).shuffled(Random(TestUtils.FIXTURE_SEED)) // Fixed seed so a failure is reproducible
 
     val estimate = feeEstimator.calculateEstimates(snapshots)
 

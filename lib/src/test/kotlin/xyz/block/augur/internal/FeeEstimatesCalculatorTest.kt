@@ -61,9 +61,11 @@ class FeeEstimatesCalculatorTest {
   }
 
   @Test
-  fun `test findBestIndex when no weights are fully mined`() {
+  fun `test findBestIndex returns null when no weights are fully mined`() {
     val weights = F64Array(5) { 1000.0 }
-    assertEquals(defaultLayout.bucketMax + 1, calculator.findBestIndex(weights))
+    // Null rather than bucketMax + 1: an out-of-range bucket index is only distinguishable from a
+    // real one by remembering to range-check it, and one caller did not.
+    assertNull(calculator.findBestIndex(weights))
   }
 
   @Test
@@ -255,7 +257,7 @@ class FeeEstimatesCalculatorTest {
   }
 
   @Test
-  fun `test runSimulation ignores estimate when no buckets fully mined`() {
+  fun `test runSimulation returns null when no buckets fully mined`() {
     val initialWeights = F64Array(5) { 4.0 }
     val addedWeights = F64Array(5) { 4.0 }
 
@@ -268,7 +270,7 @@ class FeeEstimatesCalculatorTest {
         blockSize = 1.0,
       )
 
-    assertEquals(defaultLayout.bucketMax + 1, result) // Index > defaultLayout.bucketMax, indicating no estimate
+    assertNull(result, "no bucket was fully mined, so there is no estimate to report")
   }
 
   @Test
@@ -390,5 +392,88 @@ class FeeEstimatesCalculatorTest {
         assertEquals(exactFeeRate, fee, "Estimate should be exactly $exactFeeRate")
       }
     }
+  }
+
+  @Test
+  fun `test mineBlock does not gain capacity from a negative bucket weight`() {
+    val weights = F64Array(4) { 1000.0 }
+    weights[1] = -10_000.0
+
+    val remaining = calculator.mineBlock(weights, blockSize = 1500.0)
+
+    // Capacity is 1500: bucket 0 takes 1000, bucket 1 has nothing minable, bucket 2 takes the
+    // last 500 and bucket 3 is untouched. Treating -10000 as 10000 units of freed capacity used to
+    // let one block clear the rest of the ladder, so the whole mempool looked clearable at the
+    // minimum fee rate.
+    assertEquals(0.0, remaining[0])
+    assertEquals(-10_000.0, remaining[1])
+    assertEquals(500.0, remaining[2])
+    assertEquals(1000.0, remaining[3])
+  }
+
+  @Test
+  fun `test enforceMonotonicity leaves unavailable cells out of the running bound`() {
+    // NaN marks a cell no fee rate can satisfy. It must not become the bound for the rest of the
+    // column: comparisons against NaN are always false, so the bound silently stuck at NaN and
+    // every longer target was overwritten with it.
+    val feeRates = F64Array(3, 1)
+    feeRates[0, 0] = Double.NaN
+    feeRates[1, 0] = 50.0
+    feeRates[2, 0] = 40.0
+
+    val result = calculator.enforceMonotonicity(feeRates)
+
+    assertTrue(result[0, 0].isNaN(), "the unanswerable cell should stay unanswerable")
+    assertEquals(50.0, result[1, 0])
+    assertEquals(40.0, result[2, 0])
+  }
+
+  @Test
+  fun `test getWeightedEstimates saturates the long term weight past the window`() {
+    // The ramp 1 - (1 - t/window)^2 peaks at the window and then falls away: without saturation the
+    // long-term weight returns to 0 at twice the window and goes negative beyond, so the two
+    // estimates were extrapolated apart rather than blended.
+    val targets = listOf(144.0, 288.0, 1008.0)
+    val calc = FeeEstimatesCalculator(listOf(0.5), targets, BucketLayout.DEFAULT)
+
+    val short = F64Array(targets.size, 1)
+    val long = F64Array(targets.size, 1)
+    for (i in targets.indices) {
+      short[i, 0] = 100.0
+      long[i, 0] = 900.0
+    }
+
+    val weighted = calc.getWeightedEstimates(short, long)
+
+    // At and past the window every target is the pure long-term estimate.
+    targets.indices.forEach { i ->
+      assertEquals(900.0, weighted[i, 0], 1e-9, "target=${targets[i]} should be the long-term estimate")
+    }
+  }
+
+  @Test
+  fun `test getWeightedEstimates ramp reaches the long term estimate at the configured window`() {
+    // The window used to be hardcoded to 144 blocks no matter how FeeEstimator was configured, so a
+    // caller with a 12 hour long-term window still had the ramp stretched over 24 hours' worth.
+    val targets = listOf(72.0, 144.0)
+    val short = F64Array(targets.size, 1)
+    val long = F64Array(targets.size, 1)
+    for (i in targets.indices) {
+      short[i, 0] = 100.0
+      long[i, 0] = 900.0
+    }
+
+    // 12 hour window: the ramp is complete at 72 blocks.
+    val twelveHour =
+      FeeEstimatesCalculator(listOf(0.5), targets, BucketLayout.DEFAULT, longTermWindowBlocks = 72.0)
+        .getWeightedEstimates(short, long)
+    assertEquals(900.0, twelveHour[0, 0], 1e-9)
+
+    // 24 hour window: 72 blocks is only halfway, so the blend is 3/4 long-term.
+    val twentyFourHour =
+      FeeEstimatesCalculator(listOf(0.5), targets, BucketLayout.DEFAULT, longTermWindowBlocks = 144.0)
+        .getWeightedEstimates(short, long)
+    assertEquals(700.0, twentyFourHour[0, 0], 1e-9)
+    assertEquals(900.0, twentyFourHour[1, 0], 1e-9)
   }
 }

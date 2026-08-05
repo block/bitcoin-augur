@@ -23,6 +23,13 @@ import java.time.Instant
 import kotlin.random.Random
 
 object TestUtils {
+  /**
+   * Fixture weights are pseudo-random so the mempool has a realistic shape, but the seed is fixed:
+   * an unseeded generator gave every run a different mempool, so a failure could not be reproduced
+   * and assertions had to stay loose enough to pass on any draw.
+   */
+  const val FIXTURE_SEED: Long = 20250101L
+
   fun createSnapshot(
     blockHeight: Int,
     timestamp: Instant = Instant.now(),
@@ -42,19 +49,22 @@ object TestUtils {
     return MempoolTransaction(weight = weight, fee = fee)
   }
 
-  // Default test data generators
-  fun createDefaultBaseWeights(): Map<Double, Long> =
-    buildMap {
+  // Default test data generators.
+  // A fresh generator per call, not one shared instance, so the fixture does not depend on how many
+  // times it has already been built.
+  fun createDefaultBaseWeights(): Map<Double, Long> {
+    val random = Random(FIXTURE_SEED)
+    return buildMap {
       // Low fee range (0.5 - 4.0 sat/vB)
       for (fee in 1..8) {
         val feeRate = fee * 0.5
-        put(feeRate, (500_000L + (Random.nextDouble() * 1_500_000L).toLong()))
+        put(feeRate, (500_000L + (random.nextDouble() * 1_500_000L).toLong()))
       }
 
       // Medium fee range (4.5 - 16.0 sat/vB)
       for (fee in 9..32) {
         val feeRate = fee * 0.5
-        val baseWeight = 2_000_000L + (Random.nextDouble() * 5_000_000L).toLong()
+        val baseWeight = 2_000_000L + (random.nextDouble() * 5_000_000L).toLong()
         val weight =
           when (feeRate) {
             5.0 -> baseWeight * 3 // Spike at 5 sat/vB
@@ -70,7 +80,7 @@ object TestUtils {
       // High fee range (16.5 - 32.0 sat/vB)
       for (fee in 33..64) {
         val feeRate = fee * 0.5
-        val baseWeight = 1_000_000L + (Random.nextDouble() * 3_000_000L).toLong()
+        val baseWeight = 1_000_000L + (random.nextDouble() * 3_000_000L).toLong()
         val weight =
           when (feeRate) {
             20.0 -> baseWeight * 3 // Spike at 20 sat/vB
@@ -81,6 +91,7 @@ object TestUtils {
         put(feeRate, weight)
       }
     }
+  }
 
   fun createHighInflowRates(): Map<Double, Long> =
     buildMap {

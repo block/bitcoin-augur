@@ -26,12 +26,16 @@ import java.time.Duration
  * during the time period being estimated.
  */
 internal object InflowCalculator {
+  private val TEN_MINUTES: Duration = Duration.ofMinutes(10)
+
   /**
    * Calculates inflow rates based on historical snapshots.
    *
    * @param mempoolSnapshots List of mempool snapshots
    * @param timeframe Duration to consider for inflow calculation
-   * @return Array of inflow rates by fee rate bucket
+   * @return Array of inflow rates by fee rate bucket, normalized to ten minutes. All zero when the
+   *         snapshots span no measurable time, since inflow is only observable between two
+   *         snapshots taken at the same block height.
    */
   fun calculateInflows(
     mempoolSnapshots: List<MempoolSnapshotF64Array>,
@@ -72,9 +76,16 @@ internal object InflowCalculator {
       inflows += delta
     }
 
-    // Normalize inflows to 10 minutes
-    val tenMinutes = Duration.ofMinutes(10)
-    val normalizationFactor = tenMinutes.seconds.toDouble() / totalTimeSpan.seconds
+    // Normalize inflows to 10 minutes, i.e. one block's worth of arrivals.
+    //
+    // totalTimeSpan is zero whenever no block height carries more than one snapshot -- the ordinary
+    // state for a collector polling once per block. Every delta above is then zero too, so there is
+    // nothing to normalize. Dividing anyway yielded Infinity, then 0.0 * Infinity = NaN in every
+    // bucket, and those NaNs voided the whole fee table with no indication of why.
+    if (totalTimeSpan.isZero || totalTimeSpan.isNegative) return F64Array(bucketLayout.arraySize)
+
+    // toMillis rather than seconds, which truncated sub-second spans to zero and divided by zero.
+    val normalizationFactor = TEN_MINUTES.toMillis().toDouble() / totalTimeSpan.toMillis()
     inflows *= normalizationFactor
 
     return inflows
