@@ -15,6 +15,20 @@ buildscript {
     repositories {
         mavenCentral()
     }
+
+    dependencies {
+        classpath(platform("com.fasterxml.jackson:jackson-bom:2.22.1"))
+    }
+}
+
+// Align Dokka's build-only dependencies with versions containing upstream security fixes.
+allprojects {
+    pluginManager.withPlugin("org.jetbrains.dokka") {
+        dependencies {
+            add("dokkaHtmlGeneratorRuntime", platform("com.fasterxml.jackson:jackson-bom:2.22.1"))
+            add("dokkaHtmlGeneratorRuntime", "org.jsoup:jsoup:1.23.1")
+        }
+    }
 }
 
 // Configure binary compatibility validator
